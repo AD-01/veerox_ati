@@ -1,0 +1,13 @@
+﻿{
+    "name":  "@veerox/config",
+    "version":  "1.0.0",
+    "private":  true,
+    "files":  [
+                  "tsconfig.base.json",
+                  "tsconfig.next.json",
+                  "tsconfig.nest.json",
+                  "eslint-next.json",
+                  "eslint-node.json",
+                  "jest.config.js"
+              ]
+}

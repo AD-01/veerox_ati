@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "name": "@veerox/ui",
+  "main": "./src/index.ts",
+  "devDependencies": {
+    "@veerox/config": "workspace:*",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@veerox/shared": "workspace:*",
+    "@veerox/contracts": "workspace:*",
+    "@veerox/events": "workspace:*"
+  },
+  "types": "./src/index.ts",
+  "private": true,
+  "scripts": {
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  }
+}

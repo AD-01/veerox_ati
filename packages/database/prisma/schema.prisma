@@ -1,0 +1,1201 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// IDENTITY SCHEMA
+// -----------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  email         String    @unique @db.VarChar(255)
+  username      String    @unique @db.VarChar(100)
+  firstName     String    @map("first_name") @db.VarChar(100)
+  lastName      String    @map("last_name") @db.VarChar(100)
+  avatarUrl     String?   @map("avatar_url") @db.Text
+  phone         String?   @db.VarChar(30)
+  passwordHash  String    @map("password_hash") @db.Text
+  emailVerified Boolean   @default(false) @map("email_verified")
+  mfaEnabled    Boolean   @default(false) @map("mfa_enabled")
+  lastLoginAt   DateTime? @map("last_login_at") @db.Timestamp(6)
+  status        String    @default("ACTIVE") @db.VarChar(30)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  sessions            Session[]
+  mfaDevices          MfaDevice[]
+  userRoles           UserRole[]
+  ownedOrganizations  Organization[]       @relation("OrganizationOwner")
+  organizationMembers OrganizationMember[] @relation("OrganizationMembers")
+  invitationsSent     Invitation[]         @relation("InvitationsSent")
+  workspaceMembers    WorkspaceMember[]
+
+  @@index([email])
+  @@index([username])
+  @@index([status])
+  @@map("users")
+}
+
+model Role {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique @db.VarChar(100)
+  description String? @db.Text
+  systemRole  Boolean @default(false) @map("system_role")
+
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique @db.VarChar(100)
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId         String  @map("user_id") @db.Uuid
+  organizationId String? @map("organization_id") @db.Uuid
+  workspaceId    String? @map("workspace_id") @db.Uuid
+  roleId         String  @map("role_id") @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId]) // Adjust if a user can have the same role in different orgs
+  @@index([userId, workspaceId])
+  @@map("user_roles")
+}
+
+model Session {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  refreshTokenHash  String    @map("refresh_token_hash") @db.Text
+  ipAddress         String?   @map("ip_address") @db.VarChar(45) // Can hold IPv6
+  device            String?   @db.Text
+  userAgent         String?   @map("user_agent") @db.Text
+  expiresAt         DateTime  @map("expires_at") @db.Timestamp(6)
+  absoluteExpiresAt DateTime? @map("absolute_expires_at") @db.Timestamp(6)
+  revokedAt         DateTime? @map("revoked_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model MfaDevice {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  secret        String   @db.Text
+  recoveryCodes String   @map("recovery_codes") @db.Text
+  verified      Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mfa_devices")
+}
+
+// -----------------------------------------------------------------------------
+// AUDIT SCHEMA
+// -----------------------------------------------------------------------------
+
+model AuditLog {
+  id               String   @id @default(uuid()) @db.Uuid
+  actorId          String?  @map("actor_id") @db.Uuid
+  targetUserId     String?  @map("target_user_id") @db.Uuid
+  action           String   @db.VarChar(100)
+  previousState    String?  @map("previous_state") @db.Text
+  newState         String?  @map("new_state") @db.Text
+  timestamp        DateTime @default(now()) @db.Timestamp(6)
+  ipAddress        String?  @map("ip_address") @db.VarChar(45)
+  device           String?  @db.Text
+  reason           String?  @db.Text
+  correlationId    String?  @map("correlation_id") @db.Uuid
+  organizationId   String?  @map("organization_id") @db.Uuid
+  workspaceId      String?  @map("workspace_id") @db.Uuid
+  targetEntityId   String?  @map("target_entity_id") @db.Uuid
+  targetEntityType String?  @map("target_entity_type") @db.VarChar(50)
+
+  @@index([targetUserId])
+  @@index([actorId])
+  @@index([action])
+  @@index([organizationId])
+  @@index([workspaceId])
+  @@index([targetEntityId])
+  @@map("audit_logs")
+}
+
+// -----------------------------------------------------------------------------
+// ORGANIZATION SCHEMA
+// -----------------------------------------------------------------------------
+
+model Organization {
+  id                 String   @id @default(uuid()) @db.Uuid
+  name               String   @unique @db.VarChar(255)
+  slug               String   @unique @db.VarChar(255)
+  ownerUserId        String   @map("owner_user_id") @db.Uuid
+  subscriptionPlan   String?  @map("subscription_plan") @db.VarChar(50)
+  subscriptionStatus String?  @map("subscription_status") @db.VarChar(50)
+  timezone           String?  @db.VarChar(100)
+  currency           String?  @db.VarChar(10)
+  status             String   @default("ACTIVE") @db.VarChar(30)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  ownerUser           User                  @relation("OrganizationOwner", fields: [ownerUserId], references: [id])
+  organizationMembers OrganizationMember[]
+  invitations         Invitation[]
+  subscriptions       Subscription[]
+  workspaces          Workspace[]
+  connectors          Connector[]
+  tradingAccounts     TradingAccount[]
+  Strategy            Strategy[]
+  ExpertAdvisor       ExpertAdvisor[]
+  riskProfiles        RiskProfile[]
+  riskAssessments     RiskAssessment[]
+  decisions           Decision[]
+  DecisionCorrelation DecisionCorrelation[]
+  StrategyMetrics     StrategyMetrics[]
+  policies            Policy[]
+  policyEvaluations   PolicyEvaluation[]
+  ExecutionOrder      ExecutionOrder[]
+  aiModels          AIModel[]
+  aiConfigurations  AIConfiguration[]
+  aiRecommendations AIRecommendation[]
+
+  @@index([slug])
+  @@index([ownerUserId])
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  joinedAt       DateTime @default(now()) @map("joined_at") @db.Timestamp(6)
+  status         String   @db.VarChar(30)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation("OrganizationMembers", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, userId])
+  @@map("organization_members")
+}
+
+model Invitation {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  email           String    @db.VarChar(255)
+  invitedBy       String    @map("invited_by") @db.Uuid
+  invitationToken String    @unique @map("invitation_token") @db.Text
+  expiresAt       DateTime  @map("expires_at") @db.Timestamp(6)
+  acceptedAt      DateTime? @map("accepted_at") @db.Timestamp(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inviterUser  User         @relation("InvitationsSent", fields: [invitedBy], references: [id])
+
+  @@map("invitations")
+}
+
+model SubscriptionPlan {
+  id                String  @id @default(uuid()) @db.Uuid
+  name              String  @db.VarChar(100)
+  monthlyPrice      Decimal @map("monthly_price")
+  yearlyPrice       Decimal @map("yearly_price")
+  maxWorkspaces     Int     @map("max_workspaces")
+  maxAccounts       Int     @map("max_accounts")
+  maxUsers          Int     @map("max_users")
+  apiAccess         Boolean @map("api_access")
+  aiAccess          Boolean @map("ai_access")
+  marketplaceAccess Boolean @map("marketplace_access")
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  planId          String    @map("plan_id") @db.Uuid
+  startsAt        DateTime  @map("starts_at") @db.Timestamp(6)
+  expiresAt       DateTime? @map("expires_at") @db.Timestamp(6)
+  renewalDate     DateTime? @map("renewal_date") @db.Timestamp(6)
+  paymentProvider String?   @map("payment_provider") @db.VarChar(50)
+  status          String    @db.VarChar(30)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+// -----------------------------------------------------------------------------
+// WORKSPACE SCHEMA
+// -----------------------------------------------------------------------------
+
+model Workspace {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String   @db.VarChar(255)
+  status         String   @default("ACTIVE") @db.VarChar(30)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  organization              Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  configuration             WorkspaceConfig?
+  members                   WorkspaceMember[]
+  connectors                Connector[]
+  tradingAccounts           TradingAccount[]
+  StrategyEvaluationHistory StrategyEvaluationHistory[]
+  OpenPositionReadModel     OpenPositionReadModel[]
+  StrategyOrchestration     StrategyOrchestration?
+  riskProfile               RiskProfile?
+  riskAssessments           RiskAssessment[]
+  decisions                 Decision[]
+  DecisionCorrelation       DecisionCorrelation[]
+  StrategyMetricsReadModel  StrategyMetricsReadModel[]
+  policies                  Policy[]
+  policyEvaluations         PolicyEvaluation[]
+  backtestJobs              BacktestJob[]
+  ExecutionOrder            ExecutionOrder[]
+  aiModels          AIModel[]
+  aiConfiguration   AIConfiguration?
+  aiRecommendations AIRecommendation[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([status])
+  @@map("workspaces")
+}
+
+model WorkspaceConfig {
+  workspaceId          String @id @map("workspace_id") @db.Uuid
+  tradingPolicies      String @map("trading_policies") @db.Text
+  riskLimits           String @map("risk_limits") @db.Text
+  notificationSettings String @map("notification_settings") @db.Text
+  strategyPreferences  String @map("strategy_preferences") @db.Text
+  automationMode       String @map("automation_mode") @db.VarChar(50)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("workspace_configs")
+}
+
+model WorkspaceMember {
+  workspaceId String   @map("workspace_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  joinedAt    DateTime @default(now()) @map("joined_at") @db.Timestamp(6)
+  status      String   @db.VarChar(30)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+// -----------------------------------------------------------------------------
+// CONNECTOR SCHEMA
+// -----------------------------------------------------------------------------
+
+model Connector {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @map("organization_id") @db.Uuid
+  workspaceId      String    @map("workspace_id") @db.Uuid
+  name             String    @db.VarChar(255)
+  provider         String    @db.VarChar(100)
+  status           String    @default("ACTIVE") @db.VarChar(30)
+  connectionStatus String    @default("PROVISIONED") @map("connection_status") @db.VarChar(30)
+  lastSeenAt       DateTime? @map("last_seen_at") @db.Timestamp(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  organization    Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace       Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tradingAccounts TradingAccount[]
+  healthRecords   ConnectorHealth[]
+  commands        ConnectorCommand[]
+  responses       ConnectorResponse[]
+  credentials     ConnectorCredential[]
+
+  @@index([organizationId])
+  @@index([workspaceId])
+  @@index([status])
+  @@map("connectors")
+}
+
+model ConnectorCredential {
+  id             String    @id @default(uuid()) @db.Uuid
+  connectorId    String    @map("connector_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  workspaceId    String    @map("workspace_id") @db.Uuid
+  secretHash     String    @map("secret_hash") @db.Text
+  status         String    @default("ACTIVE") @db.VarChar(30)
+  lastUsedAt     DateTime? @map("last_used_at") @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  connector Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+
+  @@index([connectorId])
+  @@index([organizationId])
+  @@index([workspaceId])
+  @@index([status])
+  @@map("connector_credentials")
+}
+
+model ConnectorHealth {
+  id              String   @id @default(uuid()) @db.Uuid
+  connectorId     String   @map("connector_id") @db.Uuid
+  cpuUsage        Decimal? @map("cpu_usage") @db.Decimal(5, 2)
+  memoryUsage     Decimal? @map("memory_usage") @db.Decimal(5, 2)
+  diskUsage       Decimal? @map("disk_usage") @db.Decimal(5, 2)
+  networkLatency  Int?     @map("network_latency")
+  activeTerminals Int?     @map("active_terminals")
+  activeAccounts  Int?     @map("active_accounts")
+  healthScore     Int?     @map("health_score")
+  recordedAt      DateTime @default(now()) @map("recorded_at") @db.Timestamp(6)
+
+  connector Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+
+  @@index([connectorId, recordedAt(sort: Desc)])
+  @@map("connector_health")
+}
+
+model ConnectorCommand {
+  id          String    @id @default(uuid()) @db.Uuid
+  connectorId String    @map("connector_id") @db.Uuid
+  commandType String    @map("command_type") @db.VarChar(50)
+  payloadJson String    @map("payload_json") @db.Text
+  status      String    @default("PENDING") @db.VarChar(30)
+  retries     Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  expiresAt   DateTime? @map("expires_at") @db.Timestamp(6)
+  processedAt DateTime? @map("processed_at") @db.Timestamp(6)
+
+  connector Connector           @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  responses ConnectorResponse[]
+
+  @@index([connectorId])
+  @@index([status])
+  @@map("connector_commands")
+}
+
+model ConnectorResponse {
+  id              String   @id @default(uuid()) @db.Uuid
+  commandId       String   @map("command_id") @db.Uuid
+  connectorId     String   @map("connector_id") @db.Uuid
+  responseCode    String   @map("response_code") @db.VarChar(50)
+  responseMessage String?  @map("response_message") @db.Text
+  payloadJson     String?  @map("payload_json") @db.Text
+  receivedAt      DateTime @default(now()) @map("received_at") @db.Timestamp(6)
+
+  command   ConnectorCommand @relation(fields: [commandId], references: [id], onDelete: Cascade)
+  connector Connector        @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+
+  @@index([commandId])
+  @@index([connectorId])
+  @@map("connector_responses")
+}
+
+// -----------------------------------------------------------------------------
+// TRADING ACCOUNT SCHEMA
+// -----------------------------------------------------------------------------
+
+model TradingAccount {
+  id                    String    @id @default(uuid()) @db.Uuid
+  organizationId        String    @map("organization_id") @db.Uuid
+  workspaceId           String    @map("workspace_id") @db.Uuid
+  connectorId           String    @map("connector_id") @db.Uuid
+  brokerName            String    @map("broker_name") @db.VarChar(150)
+  brokerServer          String    @map("broker_server") @db.VarChar(150)
+  accountNumber         String    @map("account_number") @db.VarChar(100)
+  accountName           String    @map("account_name") @db.VarChar(150)
+  accountType           String    @map("account_type") @db.VarChar(30)
+  leverage              String    @db.VarChar(30)
+  currency              String    @db.VarChar(10)
+  platform              String    @db.VarChar(30)
+  terminalVersion       String    @map("terminal_version") @db.VarChar(50)
+  tradingEnabled        Boolean   @default(false) @map("trading_enabled")
+  synchronizationStatus String    @default("PENDING") @map("synchronization_status") @db.VarChar(30)
+  status                String    @default("PENDING") @db.VarChar(30) // Lifecycle state
+  lastSyncAt            DateTime? @map("last_sync_at") @db.Timestamp(6)
+  balance               Decimal   @default(0) @db.Decimal(24, 8)
+  equity                Decimal   @default(0) @db.Decimal(24, 8)
+  realizedPnl           Decimal   @default(0) @map("realized_pnl") @db.Decimal(24, 8)
+  unrealizedPnl         Decimal   @default(0) @map("unrealized_pnl") @db.Decimal(24, 8)
+  marginUsed            Decimal   @default(0) @map("margin_used") @db.Decimal(24, 8)
+  freeMargin            Decimal   @default(0) @map("free_margin") @db.Decimal(24, 8)
+  version               Int       @default(1)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace             Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connector             Connector              @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  statistics            AccountStatistics[]
+  tags                  AccountTag[]
+  positions             Position[]
+  portfolioTransactions PortfolioTransaction[]
+
+  @@unique([brokerServer, accountNumber])
+  @@index([organizationId])
+  @@index([workspaceId])
+  @@index([connectorId])
+  @@index([brokerName])
+  @@index([synchronizationStatus])
+  @@index([status])
+  @@map("trading_accounts")
+}
+
+model AccountStatistics {
+  id             String   @id @default(uuid()) @db.Uuid
+  accountId      String   @map("account_id") @db.Uuid
+  balance        Decimal  @db.Decimal(18, 2)
+  equity         Decimal  @db.Decimal(18, 2)
+  margin         Decimal  @db.Decimal(18, 2)
+  freeMargin     Decimal  @map("free_margin") @db.Decimal(18, 2)
+  drawdown       Decimal  @db.Decimal(5, 2)
+  peakEquity     Decimal  @map("peak_equity") @db.Decimal(18, 2)
+  floatingProfit Decimal  @map("floating_profit") @db.Decimal(18, 2)
+  snapshotTime   DateTime @default(now()) @map("snapshot_time") @db.Timestamp(6)
+
+  account TradingAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, snapshotTime(sort: Desc)])
+  @@map("account_statistics")
+}
+
+model AccountTag {
+  accountId String @map("account_id") @db.Uuid
+  tag       String @db.VarChar(50)
+
+  account TradingAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@id([accountId, tag])
+  @@map("account_tags")
+}
+
+// -----------------------------------------------------------------------------
+// PORTFOLIO SCHEMA
+// -----------------------------------------------------------------------------
+
+model Position {
+  id                String    @id @default(uuid()) @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  workspaceId       String    @map("workspace_id") @db.Uuid
+  tradingAccountId  String    @map("trading_account_id") @db.Uuid
+  symbolId          String    @map("symbol_id") @db.Uuid
+  side              String    @db.VarChar(10)
+  quantity          Decimal   @db.Decimal(24, 8)
+  averageEntryPrice Decimal   @map("average_entry_price") @db.Decimal(24, 8)
+  realizedPnl       Decimal   @default(0) @map("realized_pnl") @db.Decimal(24, 8)
+  unrealizedPnl     Decimal   @default(0) @map("unrealized_pnl") @db.Decimal(24, 8)
+  status            String    @default("OPEN") @db.VarChar(30)
+  openedAt          DateTime  @default(now()) @map("opened_at") @db.Timestamp(6)
+  closedAt          DateTime? @map("closed_at") @db.Timestamp(6)
+  correlationId     String?   @map("correlation_id") @db.Uuid
+  version           Int       @default(1)
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+  symbol         Symbol         @relation(fields: [symbolId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([workspaceId])
+  @@index([tradingAccountId, status])
+  @@index([symbolId])
+  @@map("positions")
+}
+
+model PortfolioTransaction {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  workspaceId      String   @map("workspace_id") @db.Uuid
+  tradingAccountId String   @map("trading_account_id") @db.Uuid
+  executionOrderId String   @unique @map("execution_order_id") @db.Uuid
+  type             String   @db.VarChar(50)
+  amount           Decimal  @db.Decimal(24, 8)
+  currency         String   @db.VarChar(10)
+  balanceBefore    Decimal  @map("balance_before") @db.Decimal(24, 8)
+  balanceAfter     Decimal  @map("balance_after") @db.Decimal(24, 8)
+  realizedPnl      Decimal  @default(0) @map("realized_pnl") @db.Decimal(24, 8)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([workspaceId])
+  @@index([tradingAccountId, createdAt])
+  @@map("portfolio_transactions")
+}
+
+// -----------------------------------------------------------------------------
+// MARKET SCHEMA
+// -----------------------------------------------------------------------------
+
+model MarketProvider {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(150)
+  type      String   @db.VarChar(50)
+  config    String   @db.Text
+  status    String   @default("ACTIVE") @db.VarChar(30)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  symbols Symbol[]
+
+  @@index([status])
+  @@map("market_providers")
+}
+
+model Symbol {
+  id             String   @id @default(uuid()) @db.Uuid
+  providerId     String   @map("provider_id") @db.Uuid
+  brokerSymbol   String   @map("broker_symbol") @db.VarChar(50)
+  standardSymbol String   @map("standard_symbol") @db.VarChar(50)
+  assetType      String   @map("asset_type") @db.VarChar(30)
+  contractSize   Decimal  @map("contract_size") @db.Decimal(18, 4)
+  tickSize       Decimal  @map("tick_size") @db.Decimal(18, 8)
+  precision      Int
+  status         String   @default("ACTIVE") @db.VarChar(30)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  provider  MarketProvider   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  ticks     Tick[]
+  candles   Candle[]
+  snapshots MarketSnapshot[]
+  positions Position[]
+  aiRecommendations AIRecommendation[]
+
+  @@unique([providerId, brokerSymbol])
+  @@index([standardSymbol])
+  @@map("symbols")
+}
+
+model Tick {
+  id        String   @id @default(uuid()) @db.Uuid
+  symbolId  String   @map("symbol_id") @db.Uuid
+  timestamp DateTime @db.Timestamp(6)
+  bid       Decimal  @db.Decimal(18, 8)
+  ask       Decimal  @db.Decimal(18, 8)
+  volume    Decimal  @db.Decimal(18, 8)
+
+  symbol Symbol @relation(fields: [symbolId], references: [id], onDelete: Cascade)
+
+  // Requires TimescaleDB hypertable setup in migrations
+  @@index([symbolId, timestamp(sort: Desc)])
+  @@map("ticks")
+}
+
+model Candle {
+  id        String   @id @default(uuid()) @db.Uuid
+  symbolId  String   @map("symbol_id") @db.Uuid
+  timeframe String   @db.VarChar(10)
+  timestamp DateTime @db.Timestamp(6)
+  open      Decimal  @db.Decimal(18, 8)
+  high      Decimal  @db.Decimal(18, 8)
+  low       Decimal  @db.Decimal(18, 8)
+  close     Decimal  @db.Decimal(18, 8)
+  volume    Decimal  @db.Decimal(18, 8)
+  tickCount Int      @map("tick_count")
+  isClosed  Boolean  @default(false) @map("is_closed")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  symbol Symbol @relation(fields: [symbolId], references: [id], onDelete: Cascade)
+
+  // Requires TimescaleDB hypertable setup in migrations
+  @@unique([symbolId, timeframe, timestamp])
+  @@index([symbolId, timeframe, timestamp(sort: Desc)])
+  @@index([isClosed])
+  @@map("candles")
+}
+
+model MarketSnapshot {
+  id                String   @id @default(uuid()) @db.Uuid
+  symbolId          String   @map("symbol_id") @db.Uuid
+  timeframe         String   @db.VarChar(10)
+  timestamp         DateTime @db.Timestamp(6)
+  referencePrice    Decimal  @map("reference_price") @db.Decimal(18, 8)
+  trendDirection    String   @map("trend_direction") @db.VarChar(30)
+  trendStrength     Int      @map("trend_strength")
+  volatility        Decimal  @db.Decimal(18, 8)
+  liquidityScore    Int      @map("liquidity_score")
+  regime            String   @db.VarChar(50)
+  confidenceScore   Int      @map("confidence_score")
+  marketHealthScore Int      @map("market_health_score")
+  snapshotVersion   Int      @default(1) @map("snapshot_version")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  symbol Symbol @relation(fields: [symbolId], references: [id], onDelete: Cascade)
+
+  @@unique([symbolId, timeframe, timestamp])
+  @@index([symbolId, timeframe, timestamp(sort: Desc)])
+  @@map("market_snapshots")
+}
+
+model PairwiseCorrelation {
+  id               String   @id @default(uuid()) @db.Uuid
+  symbolIdA        String   @map("symbol_id_a") @db.Uuid
+  symbolIdB        String   @map("symbol_id_b") @db.Uuid
+  correlationScore Decimal  @map("correlation_score") @db.Decimal(5, 4)
+  timeframe        String   @db.VarChar(20)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@unique([symbolIdA, symbolIdB, timeframe])
+  @@index([symbolIdA])
+  @@index([symbolIdB])
+  @@map("pairwise_correlations")
+}
+
+// -----------------------------------------------------------------------------
+// STRATEGY SCHEMA
+// -----------------------------------------------------------------------------
+
+model Strategy {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String   @db.VarChar(255)
+  version        String   @db.VarChar(50)
+  description    String?  @db.Text
+  author         String?  @db.VarChar(150)
+  riskProfile    String   @map("risk_profile") @db.VarChar(50)
+  status         String   @default("DRAFT") @db.VarChar(30)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  organization   Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  expertAdvisors ExpertAdvisor[]
+  evaluations    StrategyEvaluationHistory[] @relation("SelectedStrategy")
+  metrics        StrategyMetrics?
+  backtestJobs   BacktestJob[]
+
+  @@unique([organizationId, name, version])
+  @@index([organizationId])
+  @@index([status])
+  @@map("strategies")
+}
+
+model ExpertAdvisor {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  strategyId     String   @map("strategy_id") @db.Uuid
+  version        String   @db.VarChar(50)
+  binaryUrl      String?  @map("binary_url") @db.Text
+  sourceUrl      String?  @map("source_url") @db.Text
+  signature      String?  @db.Text
+  status         String   @default("DRAFT") @db.VarChar(30)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  strategy     Strategy     @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([strategyId])
+  @@map("expert_advisors")
+}
+
+model StrategyEvaluationHistory {
+  id                  String   @id @default(uuid()) @db.Uuid
+  workspaceId         String   @map("workspace_id") @db.Uuid
+  timestamp           DateTime @default(now()) @db.Timestamp(6)
+  candidateStrategies String   @map("candidate_strategies") @db.Text // JSON array of strategy IDs
+  selectedStrategyId  String?  @map("selected_strategy_id") @db.Uuid
+  reason              String?  @db.Text
+
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  selectedStrategy Strategy? @relation("SelectedStrategy", fields: [selectedStrategyId], references: [id])
+
+  @@index([workspaceId, timestamp(sort: Desc)])
+  @@map("strategy_evaluations")
+}
+
+model StrategyMetrics {
+  strategyId            String   @id @map("strategy_id") @db.Uuid
+  organizationId        String   @map("organization_id") @db.Uuid
+  confidenceScore       Decimal  @map("confidence_score") @db.Decimal(5, 2)
+  historicalPerformance String   @map("historical_performance") @db.VarChar(30)
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  strategy     Strategy     @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("strategy_metrics")
+}
+
+model StrategyMetricsReadModel {
+  strategyId            String   @id @map("strategy_id") @db.Uuid
+  workspaceId           String   @map("workspace_id") @db.Uuid
+  confidenceScore       Decimal  @map("confidence_score") @db.Decimal(5, 2)
+  historicalPerformance String   @map("historical_performance") @db.VarChar(30)
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@map("strategy_metrics_read")
+}
+
+model OpenPositionReadModel {
+  id           String   @id @db.Uuid
+  workspaceId  String   @map("workspace_id") @db.Uuid
+  symbolId     String   @map("symbol_id") @db.Uuid
+  strategyId   String?  @map("strategy_id") @db.Uuid
+  status       String   @db.VarChar(30)
+  size         Decimal  @db.Decimal(18, 4)
+  direction    String   @db.VarChar(10)
+  openPrice    Decimal  @map("open_price") @db.Decimal(18, 8)
+  currentPrice Decimal  @map("current_price") @db.Decimal(18, 8)
+  marginUsed   Decimal  @map("margin_used") @db.Decimal(18, 2)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([strategyId])
+  @@map("open_positions_read")
+}
+
+model StrategyOrchestration {
+  workspaceId            String   @id @map("workspace_id") @db.Uuid
+  currentStrategyId      String?  @map("current_strategy_id") @db.Uuid
+  currentExpertAdvisorId String?  @map("current_expert_advisor_id") @db.Uuid
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("strategy_orchestrations")
+}
+
+// -----------------------------------------------------------------------------
+// RISK SCHEMA
+// -----------------------------------------------------------------------------
+
+model RiskProfile {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  workspaceId      String   @unique @map("workspace_id") @db.Uuid
+  maxDailyLoss     Decimal  @map("max_daily_loss") @db.Decimal(5, 2) // Percentage (e.g. 5.00 for 5%)
+  maxDrawdown      Decimal  @map("max_drawdown") @db.Decimal(5, 2)
+  maxPositionSize  Decimal  @map("max_position_size") @db.Decimal(18, 2)
+  maxOpenPositions Int      @map("max_open_positions")
+  marginThreshold  Decimal  @map("margin_threshold") @db.Decimal(5, 2)
+  status           String   @default("ACTIVE") @db.VarChar(30)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("risk_profiles")
+}
+
+model RiskAssessment {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  workspaceId     String   @map("workspace_id") @db.Uuid
+  correlationId   String?  @map("correlation_id") @db.Uuid
+  riskScore       Int      @map("risk_score") // 0-100
+  decisionOutcome String   @map("decision_outcome") @db.VarChar(50) // e.g., APPROVED, REJECTED
+  inputsJson      String   @map("inputs_json") @db.Text
+  policiesJson    String   @map("policies_json") @db.Text
+  timestamp       DateTime @default(now()) @db.Timestamp(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([correlationId])
+  @@index([workspaceId, timestamp(sort: Desc)])
+  @@index([organizationId])
+  @@map("risk_assessments")
+}
+
+// -----------------------------------------------------------------------------
+// DECISION SCHEMA
+// -----------------------------------------------------------------------------
+
+model Decision {
+  id             String  @id @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  workspaceId    String  @map("workspace_id") @db.Uuid
+  correlationId  String? @unique @map("correlation_id") @db.Uuid
+  strategyId     String? @map("strategy_id") @db.Uuid
+  accountId      String  @map("account_id") @db.Uuid
+  symbolId       String  @map("symbol_id") @db.Uuid
+
+  outcome         String  @db.VarChar(50)
+  status          String  @db.VarChar(50)
+  confidenceScore Decimal @map("confidence_score") @db.Decimal(5, 2)
+  explanation     String  @db.Text
+  context         String  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([organizationId])
+  @@index([status])
+  @@map("decisions")
+}
+
+model DecisionCorrelation {
+  correlationId      String   @id @map("correlation_id") @db.Uuid
+  organizationId     String?  @map("organization_id") @db.Uuid
+  workspaceId        String   @map("workspace_id") @db.Uuid
+  opportunityPayload String?  @map("opportunity_payload") @db.Text
+  riskPayload        String?  @map("risk_payload") @db.Text
+  status             String   @default("PENDING") @db.VarChar(30)
+  expiresAt          DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([organizationId])
+  @@index([status, expiresAt])
+  @@map("decision_correlations")
+}
+
+// -----------------------------------------------------------------------------
+// POLICY SCHEMA
+// -----------------------------------------------------------------------------
+
+model Policy {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  workspaceId    String   @map("workspace_id") @db.Uuid
+  name           String   @db.VarChar(255)
+  description    String?  @db.Text
+  scope          String   @db.VarChar(50) // ORGANIZATION, WORKSPACE, ACCOUNT, STRATEGY, SYMBOL
+  status         String   @default("DRAFT") @db.VarChar(30) // DRAFT, ACTIVE, INACTIVE
+  priority       Int
+  version        Int      @default(1)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  rules        PolicyRule[]
+
+  @@index([organizationId])
+  @@index([workspaceId])
+  @@index([status])
+  @@map("policies")
+}
+
+model PolicyRule {
+  id            String   @id @default(uuid()) @db.Uuid
+  policyId      String   @map("policy_id") @db.Uuid
+  ruleType      String   @map("rule_type") @db.VarChar(50)
+  operator      String   @db.VarChar(30)
+  value         String   @db.VarChar(255)
+  unit          String?  @db.VarChar(30)
+  enabled       Boolean  @default(true)
+  priority      Int      @default(0)
+  configuration String   @db.Text // JSON configuration
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([policyId])
+  @@map("policy_rules")
+}
+
+model PolicyEvaluation {
+  id              String   @id @default(uuid()) @db.Uuid
+  decisionId      String   @map("decision_id") @db.Uuid
+  policyId        String   @map("policy_id") @db.Uuid
+  correlationId   String   @map("correlation_id") @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  workspaceId     String   @map("workspace_id") @db.Uuid
+  outcome         String   @db.VarChar(30) // ALLOW, REJECT
+  policyVersion   Int      @map("policy_version")
+  violations      String   @db.Text // JSON array of violations
+  effectiveLimits String   @map("effective_limits") @db.Text // JSON object of effective limits
+  explanation     String   @db.Text // JSON explanation
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([correlationId, policyId])
+  @@index([decisionId])
+  @@index([workspaceId])
+  @@index([organizationId])
+  @@map("policy_evaluations")
+}
+
+model PolicyResolutionState {
+  correlationId       String   @id @map("correlation_id") @db.Uuid
+  decisionId          String   @unique @map("decision_id") @db.Uuid
+  organizationId      String   @map("organization_id") @db.Uuid
+  workspaceId         String   @map("workspace_id") @db.Uuid
+  expectedPolicyCount Int?     @map("expected_policy_count")
+  status              String   @default("PENDING") @db.VarChar(30) // PENDING, RESOLVED, FAILED
+  finalOutcome        String?  @db.VarChar(30) // ALLOW, REJECT
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([workspaceId])
+  @@index([organizationId])
+  @@map("policy_resolution_states")
+}
+
+// -----------------------------------------------------------------------------
+// EXECUTION SCHEMA
+// -----------------------------------------------------------------------------
+
+model ExecutionOrder {
+  id                 String    @id @default(uuid()) @db.Uuid
+  workspaceId        String    @map("workspace_id") @db.Uuid
+  organizationId     String    @map("organization_id") @db.Uuid
+  accountId          String    @map("account_id") @db.Uuid
+  symbolId           String    @map("symbol_id") @db.Uuid
+  decisionId         String?   @map("decision_id") @db.Uuid
+  correlationId      String?   @map("correlation_id") @db.Uuid
+  orderType          String    @map("order_type") @db.VarChar(50) // MARKET, LIMIT, STOP
+  side               String    @db.VarChar(10) // BUY, SELL
+  status             String    @default("PENDING") @db.VarChar(30)
+  size               Decimal   @db.Decimal(18, 4)
+  requestedPrice     Decimal?  @map("requested_price") @db.Decimal(18, 8)
+  executedPrice      Decimal?  @map("executed_price") @db.Decimal(18, 8)
+  stopLoss           Decimal?  @map("stop_loss") @db.Decimal(18, 8)
+  takeProfit         Decimal?  @map("take_profit") @db.Decimal(18, 8)
+  connectorCommandId String?   @map("connector_command_id") @db.Uuid
+  failureReason      String?   @map("failure_reason") @db.Text
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  completedAt        DateTime? @map("completed_at") @db.Timestamp(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([decisionId])
+  @@index([workspaceId])
+  @@index([organizationId])
+  @@index([accountId])
+  @@index([status])
+  @@index([connectorCommandId])
+  @@map("execution_orders")
+}
+
+// -----------------------------------------------------------------------------
+// BACKTESTING SCHEMA
+// -----------------------------------------------------------------------------
+
+model BacktestJob {
+  id              String    @id @default(uuid()) @db.Uuid
+  workspaceId     String    @map("workspace_id") @db.Uuid
+  strategyId      String    @map("strategy_id") @db.Uuid
+  strategyVersion String    @map("strategy_version") @db.VarChar(50)
+  correlationId   String?   @map("correlation_id") @db.Uuid
+  eaId            String?   @map("ea_id") @db.Uuid
+  workerId        String?   @map("worker_id") @db.Uuid
+  symbols         String    @db.Text // JSON array of symbols
+  dateFrom        DateTime  @map("date_from") @db.Timestamp(6)
+  dateTo          DateTime  @map("date_to") @db.Timestamp(6)
+  status          String    @default("CREATED") @db.VarChar(30)
+  requestedBy     String    @map("requested_by") @db.Uuid
+  configuration   String?   @db.Text // JSON config
+  initialCapital  Decimal   @map("initial_capital") @db.Decimal(18, 2)
+  spread          Decimal?  @db.Decimal(18, 5)
+  slippage        Decimal?  @db.Decimal(18, 5)
+  commission      Decimal?  @db.Decimal(18, 5)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  completedAt     DateTime? @map("completed_at") @db.Timestamp(6)
+
+  workspace    Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  strategy     Strategy               @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  results      BacktestResult[]
+  tradeHistory BacktestTradeHistory[]
+
+  @@index([workspaceId])
+  @@index([status])
+  @@map("backtest_jobs")
+}
+
+model BacktestResult {
+  id             String  @id @default(uuid()) @db.Uuid
+  backtestJobId  String  @unique @map("backtest_job_id") @db.Uuid
+  totalTrades    Int     @map("total_trades")
+  winningTrades  Int     @map("winning_trades")
+  losingTrades   Int     @map("losing_trades")
+  winRate        Decimal @map("win_rate") @db.Decimal(5, 2)
+  netProfit      Decimal @map("net_profit") @db.Decimal(18, 2)
+  grossProfit    Decimal @map("gross_profit") @db.Decimal(18, 2)
+  grossLoss      Decimal @map("gross_loss") @db.Decimal(18, 2)
+  maxDrawdown    Decimal @map("max_drawdown") @db.Decimal(18, 2)
+  recoveryFactor Decimal @map("recovery_factor") @db.Decimal(10, 4)
+  sharpeRatio    Decimal @map("sharpe_ratio") @db.Decimal(10, 4)
+  profitFactor   Decimal @map("profit_factor") @db.Decimal(10, 4)
+
+  job BacktestJob @relation(fields: [backtestJobId], references: [id], onDelete: Cascade)
+
+  @@map("backtest_results")
+}
+
+model BacktestTradeHistory {
+  id            String   @id @default(uuid()) @db.Uuid
+  backtestJobId String   @map("backtest_job_id") @db.Uuid
+  symbol        String   @db.VarChar(50)
+  direction     String   @db.VarChar(10)
+  entryPrice    Decimal  @map("entry_price") @db.Decimal(18, 8)
+  exitPrice     Decimal  @map("exit_price") @db.Decimal(18, 8)
+  stopLoss      Decimal? @map("stop_loss") @db.Decimal(18, 8)
+  takeProfit    Decimal? @map("take_profit") @db.Decimal(18, 8)
+  lotSize       Decimal  @map("lot_size") @db.Decimal(18, 4)
+  pnl           Decimal  @db.Decimal(18, 2)
+  openedAt      DateTime @map("opened_at") @db.Timestamp(6)
+  closedAt      DateTime @map("closed_at") @db.Timestamp(6)
+
+  job BacktestJob @relation(fields: [backtestJobId], references: [id], onDelete: Cascade)
+
+  @@index([backtestJobId])
+  @@map("backtest_trade_history")
+}
+
+model OutboxMessage {
+  id             String    @id @default(uuid()) @db.Uuid
+  aggregateType  String    @map("aggregate_type") @db.VarChar(100)
+  aggregateId    String    @map("aggregate_id") @db.Uuid
+  eventType      String    @map("event_type") @db.VarChar(255)
+  payload        Json
+  status         String    @default("PENDING") @db.VarChar(20) // PENDING, PROCESSING, COMPLETED, FAILED
+  lockedUntil    DateTime? @map("locked_until") @db.Timestamp(6)
+  lockedBy       String?   @map("locked_by") @db.VarChar(255)
+  retryCount     Int       @default(0) @map("retry_count")
+  error          String?   @db.Text
+  correlationId  String?   @map("correlation_id") @db.Uuid
+  idempotencyKey String?   @unique @map("idempotency_key") @db.VarChar(255)
+  organizationId String?   @map("organization_id") @db.Uuid
+  workspaceId    String?   @map("workspace_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([status, lockedUntil])
+  @@index([createdAt])
+  @@map("outbox_messages")
+}
+
+// -----------------------------------------------------------------------------
+// AI SCHEMA
+// -----------------------------------------------------------------------------
+
+model AIModel {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  workspaceId    String   @map("workspace_id") @db.Uuid
+  provider       String   @db.VarChar(100)
+  modelName      String   @map("model_name") @db.VarChar(100)
+  modelVersion   String   @map("model_version") @db.VarChar(50)
+  status         String   @default("ACTIVE") @db.VarChar(30) // ACTIVE, INACTIVE, DEPRECATED
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  recommendations AIRecommendation[]
+
+  @@unique([workspaceId, provider, modelName, modelVersion])
+  @@index([organizationId])
+  @@index([workspaceId])
+  @@index([status])
+  @@map("ai_models")
+}
+
+model AIConfiguration {
+  id                  String   @id @default(uuid()) @db.Uuid
+  organizationId      String   @map("organization_id") @db.Uuid
+  workspaceId         String   @unique @map("workspace_id") @db.Uuid
+  enabled             Boolean  @default(false)
+  executionMode       String   @map("execution_mode") @db.VarChar(30) // SIGNAL_ONLY, AI_EXECUTE, HYBRID
+  minimumConfidence   Decimal  @map("minimum_confidence") @db.Decimal(5, 2)
+  maxRiskPerTrade     Decimal  @map("max_risk_per_trade") @db.Decimal(5, 2)
+  maxDailyLoss        Decimal  @map("max_daily_loss") @db.Decimal(5, 2)
+  maxOpenPositions    Int      @map("max_open_positions")
+  maxPositionSize     Decimal  @map("max_position_size") @db.Decimal(24, 8)
+  requirePolicyApproval Boolean @map("require_policy_approval") @default(true)
+  allowedSymbols      String?  @map("allowed_symbols") @db.Text // JSON array or comma separated
+  allowedSessions     String?  @map("allowed_sessions") @db.Text
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("ai_configurations")
+}
+
+model AIRecommendation {
+  id                  String   @id @default(uuid()) @db.Uuid
+  organizationId      String   @map("organization_id") @db.Uuid
+  workspaceId         String   @map("workspace_id") @db.Uuid
+  correlationId       String   @map("correlation_id") @db.Uuid
+  idempotencyKey      String   @unique @map("idempotency_key") @db.VarChar(255)
+  modelId             String   @map("model_id") @db.Uuid
+  modelVersion        String   @map("model_version") @db.VarChar(50)
+  strategyId          String?  @map("strategy_id") @db.Uuid
+  symbolId            String   @map("symbol_id") @db.Uuid
+  executionMode       String   @map("execution_mode") @db.VarChar(30)
+  recommendationType  String   @map("recommendation_type") @db.VarChar(50)
+  confidence          Decimal  @db.Decimal(5, 2)
+  marketRegime        String?  @map("market_regime") @db.VarChar(50)
+  
+  suggestedSide       String?  @map("suggested_side") @db.VarChar(10)
+  suggestedSize       Decimal? @map("suggested_size") @db.Decimal(24, 8)
+  suggestedEntry      Decimal? @map("suggested_entry") @db.Decimal(24, 8)
+  suggestedStopLoss   Decimal? @map("suggested_stop_loss") @db.Decimal(24, 8)
+  suggestedTakeProfit Decimal? @map("suggested_take_profit") @db.Decimal(24, 8)
+  
+  reasoning           String?  @db.Text
+  supportingSignals   String?  @map("supporting_signals") @db.Text // JSON array
+  
+  status              String   @db.VarChar(30) // GENERATING, GENERATED, REJECTED, EXPIRED, EXECUTION_REQUESTED, COMPLETED, FAILED
+  
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  model          AIModel      @relation(fields: [modelId], references: [id])
+  symbol         Symbol       @relation(fields: [symbolId], references: [id])
+
+  @@index([organizationId])
+  @@index([workspaceId])
+  @@index([correlationId])
+  @@index([status])
+  @@map("ai_recommendations")
+}

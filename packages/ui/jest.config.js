@@ -1,0 +1,1 @@
+module.exports = require('@veerox/config/jest.config.js');

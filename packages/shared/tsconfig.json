@@ -1,0 +1,14 @@
+{
+    "compilerOptions":  {
+                            "baseUrl":  ".",
+                            "experimentalDecorators": true
+                        },
+    "include":  [
+                    "src/**/*"
+                ],
+    "exclude":  [
+                    "node_modules",
+                    "dist"
+                ],
+    "extends":  "@veerox/config/tsconfig.base.json"
+}

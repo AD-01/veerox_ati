@@ -1,0 +1,1 @@
+{ "extends": "@veerox/config/tsconfig.nest.json", "compilerOptions": { "baseUrl": "./" } }

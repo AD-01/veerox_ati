@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "name": "@veerox/sdk",
+  "main": "./src/index.ts",
+  "devDependencies": {
+    "@types/nock": "^11.1.0",
+    "@veerox/config": "workspace:*",
+    "nock": "^14.0.17",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@veerox/contracts": "workspace:*",
+    "@veerox/events": "workspace:*",
+    "@veerox/shared": "workspace:*"
+  },
+  "types": "./src/index.ts",
+  "private": true,
+  "scripts": {
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  }
+}

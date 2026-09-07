@@ -1,0 +1,74 @@
+name: S-24 Runtime Verification
+
+on:
+  push:
+    branches:
+      - s24-runtime-verification
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: veerox_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/veerox_test
+      DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/veerox_test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.0.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for PostgreSQL readiness
+        run: |
+          until pg_isready -h localhost -p 5432 -U testuser; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          echo "PostgreSQL is ready!"
+
+      - name: Run Marketplace Tests
+        run: pnpm --filter @veerox/marketplace-service test
+
+      - name: Run Billing Tests
+        run: pnpm --filter @veerox/billing-service test
+
+      - name: Run Licensing Tests
+        run: pnpm --filter @veerox/licensing-service test
+
+      - name: Run Agent Tests
+        run: pnpm --filter @veerox/agent test
+
+      - name: Run Typecheck
+        run: pnpm typecheck
+
+      - name: Run Web Build
+        run: pnpm --filter @veerox/web build
+
+      - name: Run Full Repository Tests
+        run: pnpm test
