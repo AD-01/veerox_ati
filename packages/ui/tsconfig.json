@@ -1,13 +1,20 @@
 {
-    "compilerOptions":  {
-                            "baseUrl":  "."
-                        },
-    "include":  [
-                    "src/**/*"
-                ],
-    "exclude":  [
-                    "node_modules",
-                    "dist"
-                ],
-    "extends":  "@veerox/config/tsconfig.base.json"
+    "extends": "@veerox/config/tsconfig.base.json",
+    "compilerOptions": {
+        "baseUrl": ".",
+        "jsx": "react-jsx",
+        "module": "CommonJS",
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "outDir": "./dist",
+        "target": "ES2021",
+        "declaration": true
+    },
+    "include": [
+        "src/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
 }

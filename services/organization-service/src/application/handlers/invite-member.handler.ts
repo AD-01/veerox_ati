@@ -4,11 +4,11 @@ import { InviteMemberCommand } from '../commands/invite-member.command';
 import { IOrganizationRepository, ORGANIZATION_REPOSITORY } from '../../domain/repositories/organization.repository.interface';
 import { IInvitationRepository } from '../../domain/repositories/invitation.repository.interface';
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
-import { MemberInvitedEvent } from '@veerox/events/src/organization.events';
+import { MemberInvitedEvent } from '@veerox/events';
 import { randomBytes, createHash } from 'crypto';
 import { randomUUID } from 'crypto';
 import { OrganizationStatus } from '../../domain/aggregates/organization.aggregate';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { AuthorizationService } from '../../domain/services/authorization.service';
 import { ForbiddenException } from '@nestjs/common';
 

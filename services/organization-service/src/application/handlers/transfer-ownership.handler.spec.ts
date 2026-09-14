@@ -3,7 +3,7 @@ import { TransferOrganizationOwnershipHandler } from './transfer-ownership.handl
 import { TransferOrganizationOwnershipCommand } from '../commands/transfer-ownership.command';
 import { ORGANIZATION_REPOSITORY } from '../../domain/repositories/organization.repository.interface';
 import { AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { EventBus } from '@nestjs/cqrs';
 import { ForbiddenException, ConflictException, NotFoundException } from '@nestjs/common';
 import { OrganizationStatus } from '../../domain/aggregates/organization.aggregate';

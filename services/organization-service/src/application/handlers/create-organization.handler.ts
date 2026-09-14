@@ -5,7 +5,7 @@ import { IOrganizationRepository, ORGANIZATION_REPOSITORY } from '../../domain/r
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
 import { Organization } from '../../domain/aggregates/organization.aggregate';
 import { randomUUID } from 'crypto';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 
 @CommandHandler(CreateOrganizationCommand)

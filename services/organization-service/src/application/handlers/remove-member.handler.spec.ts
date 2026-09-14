@@ -3,7 +3,7 @@ import { RemoveMemberHandler } from './remove-member.handler';
 import { RemoveMemberCommand } from '../commands/remove-member.command';
 import { ORGANIZATION_REPOSITORY } from '../../domain/repositories/organization.repository.interface';
 import { AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { EventBus } from '@nestjs/cqrs';
 import { ForbiddenException, ConflictException } from '@nestjs/common';
 import { OrganizationStatus } from '../../domain/aggregates/organization.aggregate';
@@ -29,6 +29,7 @@ describe('RemoveMemberHandler (Security Tests)', () => {
       },
       organizationMember: {
         findUnique: jest.fn(),
+        update: jest.fn(),
         delete: jest.fn(),
       },
       $transaction: jest.fn().mockImplementation((cb) => {

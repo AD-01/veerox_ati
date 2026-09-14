@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CreateOrganizationHandler } from './create-organization.handler';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { CreateOrganizationCommand } from '../commands/create-organization.command';
 import { ORGANIZATION_REPOSITORY } from '../../domain/repositories/organization.repository.interface';
 import { AUDIT_REPOSITORY } from '../ports/audit.repository.interface';

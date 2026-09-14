@@ -4,10 +4,10 @@ import { AcceptInvitationCommand } from '../commands/accept-invitation.command';
 import { IOrganizationRepository, ORGANIZATION_REPOSITORY } from '../../domain/repositories/organization.repository.interface';
 import { IInvitationRepository, INVITATION_REPOSITORY } from '../../domain/repositories/invitation.repository.interface';
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
-import { MemberJoinedEvent } from '@veerox/events/src/organization.events';
+import { MemberJoinedEvent } from '@veerox/events';
 import { createHash } from 'crypto';
 import { OrganizationStatus } from '../../domain/aggregates/organization.aggregate';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @CommandHandler(AcceptInvitationCommand)
 export class AcceptInvitationHandler implements ICommandHandler<AcceptInvitationCommand> {

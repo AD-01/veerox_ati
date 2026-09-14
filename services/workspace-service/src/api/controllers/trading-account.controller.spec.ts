@@ -3,7 +3,7 @@ import { TradingAccountController } from './trading-account.controller';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../../infrastructure/auth/jwt-auth.guard';
-import { WorkspaceScopeGuard } from '../../infrastructure/auth/workspace-scope.guard';
+import { WorkspaceScopeGuard } from '@veerox/shared';
 
 describe('TradingAccountController', () => {
   let controller: TradingAccountController;

@@ -1,0 +1,30 @@
+{
+  "expectedSequence": 1,
+  "commandStates": {
+    "cmd-1": {
+      "state": "DISPATCHED",
+      "envelope": {
+        "messageId": "msg-1",
+        "commandId": "cmd-1",
+        "commandType": "TRADE_EXECUTE",
+        "protocolVersion": "1.0",
+        "agentId": "agent-1",
+        "organizationId": "org-1",
+        "workspaceId": "workspace-1",
+        "tradingAccountId": "account-1",
+        "connectorId": "connector-1",
+        "accountSequence": 0,
+        "correlationId": "corr-1",
+        "timestamp": "2026-09-08T05:39:39.971Z",
+        "payload": {
+          "clientExecutionId": "client-1",
+          "symbol": "EURUSD",
+          "side": "BUY",
+          "quantity": 1,
+          "sl": 1.05,
+          "tp": 1.15
+        }
+      }
+    }
+  }
+}

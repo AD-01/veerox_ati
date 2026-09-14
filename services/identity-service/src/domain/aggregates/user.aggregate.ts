@@ -10,7 +10,7 @@ import {
   UserDeletedEvent,
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
   UserRoleChangedEvent,
-} from '@veerox/events/src/identity.events';
+} from '@veerox/events';
 
 export enum UserStatus {
   ACTIVE = 'ACTIVE',

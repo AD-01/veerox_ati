@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { IUserRepository } from '../../application/ports/user.repository.interface';
 import { User, UserStatus, UserProps } from '../../domain/aggregates/user.aggregate';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { Email } from '../../domain/value-objects/email.value-object';
 import { PasswordHash } from '../../domain/value-objects/password-hash.value-object';
 

@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TokenService } from './token.service';
 import { JwtService } from '@nestjs/jwt';
-import { RedisService } from '@veerox/shared/src/redis/redis.service';
+import { RedisService } from '@veerox/shared';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import * as crypto from 'crypto';
 
 describe('TokenService', () => {

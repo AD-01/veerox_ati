@@ -1,6 +1,6 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { GetOrganizationQuery, ListOrganizationsQuery, GetMembersQuery, GetPendingInvitationsQuery } from './organization.queries';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { GetOrganizationQuery, ListOrganizationsQuery, GetMembersQuery, GetPendingInvitationsQuery, GetAuditLogsQuery } from './organization.queries';
+import { PrismaService } from '@veerox/database';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { AuthorizationService } from '../../domain/services/authorization.service';
 
@@ -119,3 +119,48 @@ export class GetPendingInvitationsHandler implements IQueryHandler<GetPendingInv
     return invitations;
   }
 }
+
+@QueryHandler(GetAuditLogsQuery)
+export class GetAuditLogsHandler implements IQueryHandler<GetAuditLogsQuery> {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async execute(query: GetAuditLogsQuery): Promise<unknown> {
+    const actorRoles = await this.prisma.userRole.findMany({
+      where: { userId: query.actorId },
+      include: { role: true },
+    });
+
+    if (!AuthorizationService.canReadOrganization(actorRoles, query.organizationId)) {
+      throw new ForbiddenException('Insufficient privileges');
+    }
+
+    const where: any = {
+      organizationId: query.organizationId,
+    };
+
+    if (query.filters?.action) {
+      where.action = query.filters.action;
+    }
+    if (query.filters?.actorId) {
+      where.actorId = query.filters.actorId;
+    }
+    if (query.filters?.targetEntityId) {
+      where.targetEntityId = query.filters.targetEntityId;
+    }
+    if (query.filters?.startDate || query.filters?.endDate) {
+      where.timestamp = {};
+      if (query.filters?.startDate) where.timestamp.gte = new Date(query.filters.startDate);
+      if (query.filters?.endDate) where.timestamp.lte = new Date(query.filters.endDate);
+    }
+
+    const logs = await this.prisma.auditLog.findMany({
+      where,
+      orderBy: { timestamp: 'desc' },
+      take: query.filters?.limit || 50,
+      skip: query.filters?.offset || 0,
+    });
+
+    return logs;
+  }
+}
+

@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+﻿import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ConfigModule } from '@nestjs/config';
+import { ObservabilityModule, RequestContextMiddleware } from '@veerox/shared';
 import { OrganizationController } from './api/controllers/organization.controller';
 import { MembershipController } from './api/controllers/membership.controller';
 import { CreateOrganizationHandler } from './application/handlers/create-organization.handler';
@@ -56,6 +57,7 @@ const Repositories = [
 
 @Module({
   imports: [
+    ObservabilityModule,
     CqrsModule,
     ConfigModule,
   ],
@@ -73,4 +75,9 @@ const Repositories = [
     RedisService,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestContextMiddleware).forRoutes('*');
+  }
+}
+

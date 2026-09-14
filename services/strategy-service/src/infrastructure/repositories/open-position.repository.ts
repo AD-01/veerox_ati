@@ -48,7 +48,7 @@ export class OpenPositionRepository {
     }));
   }
 
-  async findByWorkspaceAndSymbol(workspaceId: string, symbolId: string): Promise<any[]> {
+  async findByWorkspaceAndSymbol(workspaceId: string, symbolId: string): Promise<unknown[]> {
     const records = await this.prisma.openPositionReadModel.findMany({
       where: { workspaceId, symbolId, status: 'OPEN' },
     });

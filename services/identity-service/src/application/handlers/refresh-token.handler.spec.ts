@@ -4,7 +4,7 @@ import { RefreshTokenCommand } from '../commands/refresh-token.command';
 import { TokenService } from '../../infrastructure/auth/token.service';
 import { JwtService } from '@nestjs/jwt';
 import { USER_REPOSITORY } from '../ports/user.repository.interface';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import * as argon2 from 'argon2';
 
 jest.mock('argon2');

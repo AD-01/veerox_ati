@@ -1,8 +1,9 @@
 import { IsUUID, IsString, IsNumber, IsOptional, Min, IsIn } from 'class-validator';
 
 export class EvaluateRiskDto {
+  @IsOptional()
   @IsUUID()
-  strategyId!: string;
+  strategyId?: string;
 
   @IsUUID()
   accountId!: string;

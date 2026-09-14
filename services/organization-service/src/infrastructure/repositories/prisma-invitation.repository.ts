@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { IInvitationRepository, InvitationProps } from '../../domain/repositories/invitation.repository.interface';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @Injectable()
 export class PrismaInvitationRepository implements IInvitationRepository {

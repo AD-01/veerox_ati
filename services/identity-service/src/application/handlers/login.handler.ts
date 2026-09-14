@@ -2,7 +2,7 @@ import { CommandHandler, ICommandHandler, EventPublisher } from '@nestjs/cqrs';
 import { LoginCommand } from '../commands/login.command';
 import { IUserRepository, USER_REPOSITORY } from '../ports/user.repository.interface';
 import { Inject } from '@nestjs/common';
-import { AppException } from '@veerox/shared/src/errors/app.exception';
+import { AppException } from '@veerox/shared';
 import { UserStatus } from '../../domain/aggregates/user.aggregate';
 import { TokenService } from '../../infrastructure/auth/token.service';
 

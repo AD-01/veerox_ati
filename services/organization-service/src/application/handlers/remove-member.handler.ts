@@ -4,7 +4,7 @@ import { RemoveMemberCommand } from '../commands/remove-member.command';
 import { IOrganizationRepository, ORGANIZATION_REPOSITORY } from '../../domain/repositories/organization.repository.interface';
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
 import { OrganizationStatus } from '../../domain/aggregates/organization.aggregate';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { AuthorizationService } from '../../domain/services/authorization.service';
 
 
@@ -51,14 +51,17 @@ export class RemoveMemberHandler implements ICommandHandler<RemoveMemberCommand>
       throw new NotFoundException('User is not a member of this organization');
     }
 
-    // Delete membership and roles
+    // Revoke membership and roles
     await this.prisma.$transaction([
-      this.prisma.organizationMember.delete({
+      this.prisma.organizationMember.update({
         where: {
           organizationId_userId: {
             organizationId: command.organizationId,
             userId: command.targetUserId,
           }
+        },
+        data: {
+          status: 'REVOKED'
         }
       }),
       this.prisma.userRole.deleteMany({

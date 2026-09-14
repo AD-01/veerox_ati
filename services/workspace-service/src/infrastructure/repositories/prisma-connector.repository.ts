@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { IConnectorRepository } from '../../domain/repositories/connector.repository.interface';
 import { Connector, ConnectorStatus, ConnectorConnectionStatus } from '../../domain/aggregates/connector.aggregate';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @Injectable()
 export class PrismaConnectorRepository implements IConnectorRepository {
@@ -72,5 +72,87 @@ export class PrismaConnectorRepository implements IConnectorRepository {
         createdAt: raw.createdAt,
       }),
     );
+  }
+
+  async getHealthHistory(
+    connectorId: string,
+    organizationId: string,
+    workspaceId: string,
+    from: Date,
+    to: Date,
+    limit: number
+  ): Promise<any[]> {
+    // Verify the connector belongs to the org/workspace
+    const connector = await this.prisma.connector.findUnique({
+      where: { id: connectorId },
+      select: { organizationId: true, workspaceId: true }
+    });
+
+    if (!connector || connector.organizationId !== organizationId || connector.workspaceId !== workspaceId) {
+      return [];
+    }
+
+    const records = await this.prisma.connectorHealth.findMany({
+      where: {
+        connectorId,
+        recordedAt: {
+          gte: from,
+          lte: to,
+        },
+      },
+      orderBy: {
+        recordedAt: 'desc',
+      },
+      take: limit,
+    });
+
+    return records.map(r => ({
+      id: r.id,
+      connectorId: r.connectorId,
+      cpuUsage: r.cpuUsage ? Number(r.cpuUsage) : null,
+      memoryUsage: r.memoryUsage ? Number(r.memoryUsage) : null,
+      diskUsage: r.diskUsage ? Number(r.diskUsage) : null,
+      networkLatency: r.networkLatency,
+      activeTerminals: r.activeTerminals,
+      activeAccounts: r.activeAccounts,
+      healthScore: r.healthScore,
+      recordedAt: r.recordedAt,
+    }));
+  }
+
+  async getCommandHistory(
+    connectorId: string,
+    organizationId: string,
+    workspaceId: string,
+    limit: number
+  ): Promise<any[]> {
+    // Verify the connector belongs to the org/workspace
+    const connector = await this.prisma.connector.findUnique({
+      where: { id: connectorId },
+      select: { organizationId: true, workspaceId: true }
+    });
+
+    if (!connector || connector.organizationId !== organizationId || connector.workspaceId !== workspaceId) {
+      return [];
+    }
+
+    const commands = await this.prisma.connectorCommand.findMany({
+      where: { connectorId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+
+    return commands.map(c => ({
+      id: c.id,
+      connectorId: c.connectorId,
+      commandType: c.commandType,
+      payloadJson: c.payloadJson,
+      status: c.status,
+      retries: c.retries,
+      sequenceNumber: 0, // Fallback, not strictly in Prisma model
+      clientExecutionId: undefined, // Extracted in handler from payloadJson
+      createdAt: c.createdAt.toISOString(),
+      updatedAt: c.processedAt ? c.processedAt.toISOString() : undefined,
+    }));
   }
 }

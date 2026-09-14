@@ -1,5 +1,5 @@
 import { BaseAggregateRoot } from './base.aggregate';
-import { OrganizationCreatedEvent, OrganizationUpdatedEvent, OrganizationArchivedEvent } from '@veerox/events/src/organization.events';
+import { OrganizationCreatedEvent, OrganizationUpdatedEvent, OrganizationArchivedEvent } from '@veerox/events';
 
 export enum OrganizationStatus {
   ACTIVE = 'ACTIVE',
@@ -98,6 +98,13 @@ export class Organization extends BaseAggregateRoot {
     
     this.props.ownerUserId = newOwnerUserId;
 
+    this.apply(
+      new OrganizationUpdatedEvent(this.props.id, new Date()),
+    );
+  }
+
+  public updateMemberRole(targetUserId: string, newRole: string, actorUserId: string): void {
+    this.ensureActive();
     this.apply(
       new OrganizationUpdatedEvent(this.props.id, new Date()),
     );

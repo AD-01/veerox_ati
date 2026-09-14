@@ -1,0 +1,1 @@
+module.exports = { preset: 'ts-jest', testEnvironment: '<rootDir>/../../../packages/database/dist/prisma-test-environment.js', rootDir: './src' };

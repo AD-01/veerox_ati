@@ -1,3 +1,4 @@
+import { ObservabilityModule, RequestContextMiddleware } from '@veerox/shared';
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { PrismaService } from '@veerox/database/src/prisma.service';
@@ -23,6 +24,7 @@ import { RecalculateRiskEventHandler } from './application/handlers/risk-assessm
 
 @Module({
   imports: [
+    ObservabilityModule,
     ConfigModule.forRoot({ isGlobal: true }),
     CqrsModule,
   ],

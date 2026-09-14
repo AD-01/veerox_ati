@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '@veerox/database';
+import { PrismaService, Prisma } from '@veerox/database';
 import { StrategyFactory } from '../strategies/strategy.factory';
 import { StrategyOrchestrationRepository } from '../../infrastructure/repositories/strategy-orchestration.repository';
 import { OpenPositionRepository } from '../../infrastructure/repositories/open-position.repository';
@@ -128,7 +128,7 @@ export class LiveRunnerService {
         
         const signal = strategy.onCandle
           ? strategy.onCandle(
-              { id: 'mock', symbolId, timeframe, timestamp, open: open as any, high: high as any, low: low as any, close: close as any, volume: volume as any, tickCount: 0, isClosed: true, createdAt: new Date() },
+              { id: 'mock', symbolId, timeframe, timestamp, open: new Prisma.Decimal(open), high: new Prisma.Decimal(high), low: new Prisma.Decimal(low), close: new Prisma.Decimal(close), volume: new Prisma.Decimal(volume), tickCount: 0, isClosed: true, createdAt: new Date() },
               context
             )
           : null;
@@ -170,12 +170,13 @@ export class LiveRunnerService {
           }
         }
       });
-    } catch (error: any) {
-      if (error.code === 'P2002' && error.meta?.target?.includes('idempotency_key')) {
+    } catch (error: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (typeof error === 'object' && error !== null && 'code' in error && (error as any).code === 'P2002' && (error as any).meta?.target?.includes('idempotency_key')) {
         this.logger.debug(`Idempotent execution: duplicate signal for ${idempotencyKey} was ignored.`);
         return;
       }
-      this.logger.error(`Failed to execute strategy ${strategyId} for tick ${timestamp}: ${error.message}`);
+      this.logger.error(`Failed to execute strategy ${strategyId} for tick ${timestamp}: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }

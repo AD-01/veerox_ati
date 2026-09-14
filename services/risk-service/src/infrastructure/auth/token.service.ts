@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { RedisService } from '@veerox/shared/src/redis/redis.service';
+import { RedisService } from '@veerox/shared';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 

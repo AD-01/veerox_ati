@@ -1,6 +1,8 @@
 {
     "compilerOptions":  {
-                            "baseUrl":  "."
+                            "baseUrl":  ".",
+                            "incremental": false,
+                            "strict": false
                         },
     "include":  [
                     "next-env.d.ts",

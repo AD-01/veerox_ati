@@ -6,7 +6,7 @@ import { IMarketProviderRepository, MARKET_PROVIDER_REPOSITORY } from '../ports/
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
 import { SymbolAggregate } from '../../domain/aggregates/symbol.aggregate';
 import { EventPublisher } from '@veerox/shared';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @CommandHandler(CreateSymbolCommand)
 export class CreateSymbolHandler implements ICommandHandler<CreateSymbolCommand> {

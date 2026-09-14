@@ -5,7 +5,7 @@ import { IMarketProviderRepository, MARKET_PROVIDER_REPOSITORY } from '../ports/
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
 import { MarketProviderAggregate } from '../../domain/aggregates/market-provider.aggregate';
 import { EventPublisher } from '@veerox/shared';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @CommandHandler(CreateMarketProviderCommand)
 export class CreateMarketProviderHandler implements ICommandHandler<CreateMarketProviderCommand> {

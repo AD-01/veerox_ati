@@ -3,15 +3,19 @@ import {
   ExecutionOrderCreatedEvent,
   ExecutionOrderCompletedEvent,
   ExecutionOrderFailedEvent,
+  ExecutionOrderPartiallyFilledEvent,
+  ExecutionOrderUncertainEvent,
 } from '@veerox/events';
 
 export enum ExecutionOrderStatus {
   PENDING = 'PENDING',
   DISPATCHED = 'DISPATCHED',
   ACKNOWLEDGED = 'ACKNOWLEDGED',
+  PARTIALLY_FILLED = 'PARTIALLY_FILLED',
   FILLED = 'FILLED',
   REJECTED = 'REJECTED',
   FAILED = 'FAILED',
+  AWAITING_RECONCILIATION = 'AWAITING_RECONCILIATION',
 }
 
 export class ExecutionOrder extends AggregateRoot {
@@ -19,6 +23,12 @@ export class ExecutionOrder extends AggregateRoot {
   private connectorCommandId: string | null = null;
   private executedPrice: number | null = null;
   private failureReason: string | null = null;
+  
+  public executedSize: number = 0;
+  public remainingSize: number;
+  public brokerOrderId: string | null = null;
+  public brokerTicketId: string | null = null;
+  public magicNumber: string | null = null;
 
   constructor(
     public readonly id: string,
@@ -36,6 +46,7 @@ export class ExecutionOrder extends AggregateRoot {
     public readonly takeProfit: number | null,
   ) {
     super();
+    this.remainingSize = size;
   }
 
   create(): void {
@@ -77,34 +88,79 @@ export class ExecutionOrder extends AggregateRoot {
     this.status = ExecutionOrderStatus.ACKNOWLEDGED;
   }
 
-  fill(executedPrice: number): void {
+  fill(executedPrice: number, executedSize: number = this.remainingSize, brokerOrderId?: string, brokerTicketId?: string, commission?: number, swap?: number, realizedPnl?: number): void {
     if (
       this.status !== ExecutionOrderStatus.DISPATCHED &&
-      this.status !== ExecutionOrderStatus.ACKNOWLEDGED
+      this.status !== ExecutionOrderStatus.ACKNOWLEDGED &&
+      this.status !== ExecutionOrderStatus.PARTIALLY_FILLED
     ) {
-      throw new Error('Can only fill DISPATCHED or ACKNOWLEDGED orders');
+      throw new Error('Can only fill DISPATCHED, ACKNOWLEDGED, or PARTIALLY_FILLED orders');
     }
-    this.status = ExecutionOrderStatus.FILLED;
+    
     this.executedPrice = executedPrice;
+    this.executedSize += executedSize;
+    this.remainingSize -= executedSize;
+    
+    if (brokerOrderId) this.brokerOrderId = brokerOrderId;
+    if (brokerTicketId) this.brokerTicketId = brokerTicketId;
 
-    this.apply(
-      new ExecutionOrderCompletedEvent(
-        this.id,
-        this.workspaceId,
-        this.organizationId,
-        this.accountId,
-        this.executedPrice,
-        this.connectorCommandId,
-        new Date(),
-      ),
-    );
+    if (this.remainingSize <= 0) {
+      this.status = ExecutionOrderStatus.FILLED;
+      this.apply(
+        new ExecutionOrderCompletedEvent(
+          this.id,
+          this.workspaceId,
+          this.organizationId,
+          this.accountId,
+          this.executedPrice,
+          this.connectorCommandId,
+          new Date(),
+          this.symbolId,
+          this.side,
+          this.size,
+          this.correlationId,
+          this.brokerOrderId,
+          this.brokerTicketId,
+          this.magicNumber,
+          this.executedSize,
+          commission,
+          swap,
+          realizedPnl
+        ),
+      );
+    } else {
+      this.status = ExecutionOrderStatus.PARTIALLY_FILLED;
+      this.apply(
+        new ExecutionOrderPartiallyFilledEvent(
+          this.id,
+          this.workspaceId,
+          this.organizationId,
+          this.accountId,
+          this.executedPrice,
+          executedSize,
+          this.remainingSize,
+          this.connectorCommandId,
+          new Date(),
+          this.brokerOrderId,
+          this.brokerTicketId,
+          this.magicNumber,
+          this.symbolId,
+          this.side,
+          this.correlationId,
+          commission,
+          swap,
+          realizedPnl
+        ),
+      );
+    }
   }
 
   reject(reason: string): void {
     if (
       this.status !== ExecutionOrderStatus.DISPATCHED &&
       this.status !== ExecutionOrderStatus.ACKNOWLEDGED &&
-      this.status !== ExecutionOrderStatus.PENDING
+      this.status !== ExecutionOrderStatus.PENDING &&
+      this.status !== ExecutionOrderStatus.PARTIALLY_FILLED
     ) {
       throw new Error('Cannot reject order in current state');
     }
@@ -140,7 +196,39 @@ export class ExecutionOrder extends AggregateRoot {
         this.failureReason,
         this.connectorCommandId,
         new Date(),
+        this.symbolId,
+        this.side,
+        this.size,
+        this.correlationId,
+        this.brokerOrderId,
+        this.brokerTicketId,
+        this.magicNumber
       ),
+    );
+  }
+
+  markUncertain(reason: string): void {
+    if (this.status === ExecutionOrderStatus.FILLED || this.status === ExecutionOrderStatus.FAILED || this.status === ExecutionOrderStatus.REJECTED) {
+      throw new Error('Cannot mark terminal order as uncertain');
+    }
+    this.status = ExecutionOrderStatus.AWAITING_RECONCILIATION;
+    this.failureReason = reason;
+
+    // Dispatch the new Uncertain event
+    this.apply(
+      new ExecutionOrderUncertainEvent(
+        this.id,
+        this.workspaceId,
+        this.organizationId,
+        this.accountId,
+        this.failureReason,
+        this.connectorCommandId,
+        new Date(),
+        this.symbolId,
+        this.side,
+        this.size,
+        this.correlationId
+      )
     );
   }
 

@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+﻿import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ConfigModule } from '@nestjs/config';
+import { ObservabilityModule, RequestContextMiddleware } from '@veerox/shared';
 import { ScheduleModule } from '@nestjs/schedule';
 import { OutboxModule } from '@veerox/shared';
 import { PrismaService } from '@veerox/database';
@@ -29,6 +30,7 @@ const EventHandlers = [
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ObservabilityModule,
     CqrsModule,
     ScheduleModule.forRoot(),
     OutboxModule.register({
@@ -51,4 +53,9 @@ const EventHandlers = [
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestContextMiddleware).forRoutes('*');
+  }
+}
+

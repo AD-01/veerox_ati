@@ -9,19 +9,21 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
-    "@types/react": "^19.0.0",
-    "@veerox/config": "workspace:*",
+    "@testing-library/jest-dom": "^7.0.1",
     "@types/node": "^20.0.0",
-    "@types/react-dom": "^19.0.0"
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@veerox/config": "workspace:*",
+    "jest-environment-jsdom": "^30.5.1",
+    "typescript": "^5.5.0"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "next": "^15.0.0",
-    "@veerox/ui": "workspace:*",
     "@veerox/sdk": "workspace:*",
-    "@veerox/shared": "workspace:*"
+    "@veerox/shared": "workspace:*",
+    "@veerox/ui": "workspace:*",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "private": true
 }

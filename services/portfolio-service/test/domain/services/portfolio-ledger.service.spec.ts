@@ -31,7 +31,7 @@ describe('PortfolioLedgerService', () => {
   });
 
   describe('processFill', () => {
-    it('1. First position open (Buy 1.0)', () => {
+    it('1. First positions[0] open (Buy 1.0)', () => {
       const account = new TradingAccountAggregate(
         'acc-1', 'org-1', 'ws-1', 'conn-1', 'USD',
         new Decimal(10000), new Decimal(10000), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(10000), 1
@@ -39,9 +39,9 @@ describe('PortfolioLedgerService', () => {
 
       const result = service.processFill(account, null, 'sym-1', 1, 'BUY', 1.0, 50000, 'corr-1');
 
-      expect(result.position.side).toBe('BUY');
-      expect(result.position.quantity.toNumber()).toBe(1.0);
-      expect(result.position.averageEntryPrice.toNumber()).toBe(50000);
+      expect(result.positions[0].side).toBe('BUY');
+      expect(result.positions[0].quantity.toNumber()).toBe(1.0);
+      expect(result.positions[0].averageEntryPrice.toNumber()).toBe(50000);
       expect(result.tradePnl.toNumber()).toBe(0);
     });
 
@@ -58,10 +58,29 @@ describe('PortfolioLedgerService', () => {
 
       const result = service.processFill(account, openPosition, 'sym-1', 1, 'BUY', 0.5, 60000, 'corr-2');
 
-      expect(result.position.quantity.toNumber()).toBe(1.5);
+      expect(result.positions[0].quantity.toNumber()).toBe(1.5);
       // (1*50000 + 0.5*60000) / 1.5 = (50000 + 30000)/1.5 = 80000/1.5 = 53333.33333333
-      expect(result.position.averageEntryPrice.toNumber()).toBeCloseTo(53333.33333333);
+      expect(result.positions[0].averageEntryPrice.toNumber()).toBeCloseTo(53333.33333333);
       expect(result.tradePnl.toNumber()).toBe(0);
+    });
+
+    it('6. Reversal (Sell 1.5 against Buy 1.0)', () => {
+      const account = new TradingAccountAggregate(
+        'acc-1', 'org-1', 'ws-1', 'conn-1', 'USD',
+        new Decimal(10000), new Decimal(10000), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(10000), 1
+      );
+      
+      const openPosition = PositionAggregate.create(
+        'pos-1', 'org-1', 'ws-1', 'acc-1', 'sym-1', 'BUY', new Decimal(1.0), new Decimal(50000), 'corr-6'
+      );
+
+      const result = service.processFill(account, openPosition, 'sym-1', 1, 'SELL', 1.5, 40000, 'corr-7');
+      
+      expect(result.positions).toHaveLength(2);
+      expect(result.positions[0].status).toBe('CLOSED');
+      expect(result.positions[1].status).toBe('OPEN');
+      expect(result.positions[1].side).toBe('SELL');
+      expect(result.positions[1].quantity.toNumber()).toBe(0.5);
     });
 
     it('3. Partial close (Sell 0.5)', () => {
@@ -79,8 +98,8 @@ describe('PortfolioLedgerService', () => {
 
       const result = service.processFill(account, openPosition, 'sym-1', 1, 'SELL', 0.5, 60000, 'corr-3');
 
-      expect(result.position.quantity.toNumber()).toBe(0.5);
-      expect(result.position.status).toBe('OPEN');
+      expect(result.positions[0].quantity.toNumber()).toBe(0.5);
+      expect(result.positions[0].status).toBe('OPEN');
       // Realized PnL = (60000 - 50000) * 0.5 * 1 = 5000
       expect(result.tradePnl.toNumber()).toBe(5000);
       expect(result.account.balance.toNumber()).toBe(15000); // 10000 + 5000
@@ -101,8 +120,8 @@ describe('PortfolioLedgerService', () => {
 
       const result = service.processFill(account, openPosition, 'sym-1', 1, 'SELL', 1.0, 40000, 'corr-4');
 
-      expect(result.position.quantity.toNumber()).toBe(0);
-      expect(result.position.status).toBe('CLOSED');
+      expect(result.positions[0].quantity.toNumber()).toBe(0);
+      expect(result.positions[0].status).toBe('CLOSED');
       // Realized PnL = (40000 - 50000) * 1.0 * 1 = -10000
       expect(result.tradePnl.toNumber()).toBe(-10000);
       expect(result.account.balance.toNumber()).toBe(0); // 10000 - 10000
@@ -120,7 +139,7 @@ describe('PortfolioLedgerService', () => {
       
       const result = service.processFill(account, openPosition, 'sym-1', 1, 'SELL', 1.00000001, 60000.87654321, 'corr-5');
 
-      expect(result.position.quantity.toNumber()).toBe(0);
+      expect(result.positions[0].quantity.toNumber()).toBe(0);
       const expectedPnl = new Decimal(60000.87654321).minus(new Decimal(50000.12345678)).mul(new Decimal(1.00000001));
       expect(result.tradePnl.toNumber()).toBe(expectedPnl.toNumber());
       expect(result.account.balance.toNumber()).toBe(new Decimal(10000).plus(expectedPnl).toNumber());

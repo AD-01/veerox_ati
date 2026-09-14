@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventBus } from '@nestjs/cqrs';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
 import { TokenService } from '../../infrastructure/auth/token.service';
 import { AuthenticateConnectorHandler } from './authenticate-connector.handler';

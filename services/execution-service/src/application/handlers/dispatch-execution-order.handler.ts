@@ -29,6 +29,27 @@ export class DispatchExecutionOrderHandler implements IEventHandler<ExecutionOrd
       throw new Error(`Tenant mismatch for TradingAccount ${event.accountId}`);
     }
 
+    if (account.executionHalted) {
+      if (event.orderType !== 'CLOSE' && event.orderType !== 'RECONCILE' && event.orderType !== 'HEARTBEAT' && event.orderType !== 'RECOVERY') {
+        // Track H: Audit log the kill switch rejection
+        await this.prisma.auditLog.create({
+          data: {
+            action: 'KILL_SWITCH_REJECTION',
+            actorId: 'SYSTEM',
+            targetEntityId: event.orderId,
+            targetEntityType: 'ExecutionOrder',
+            previousState: 'PENDING',
+            newState: 'REJECTED',
+            correlationId: event.correlationId,
+            organizationId: event.organizationId,
+            workspaceId: event.workspaceId,
+            reason: `Execution halted for TradingAccount ${account.id}. Blocked order type: ${event.orderType}`,
+          },
+        });
+        throw new Error(`Execution halted for TradingAccount ${account.id}. Blocked order type: ${event.orderType}`);
+      }
+    }
+
     const symbol = await this.prisma.symbol.findUnique({
       where: { id: event.symbolId },
     });
@@ -71,8 +92,12 @@ export class DispatchExecutionOrderHandler implements IEventHandler<ExecutionOrd
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (executionOrder as any).status = 'PENDING';
-    
+
     executionOrder.dispatch(connectorCommandId);
+
+    const now = new Date();
+    // Default manual trade expiration: 30 seconds
+    const expiresAt = new Date(now.getTime() + 30 * 1000);
 
     const issuedEvent = new ConnectorCommandIssuedEvent(
       connectorCommandId,
@@ -80,7 +105,8 @@ export class DispatchExecutionOrderHandler implements IEventHandler<ExecutionOrd
       event.workspaceId,
       'TRADE_EXECUTE',
       JSON.stringify(payload),
-      new Date(),
+      now,
+      expiresAt,
     );
     executionOrder.apply(issuedEvent);
 
@@ -103,13 +129,27 @@ export class DispatchExecutionOrderHandler implements IEventHandler<ExecutionOrd
           throw new Error('Order is not in PENDING state or does not exist (possibly already dispatched).');
         }
 
-        await tx.connectorCommand.create({
+        // Monotonic sequence allocation
+        const updatedAccount = await tx.tradingAccount.update({
+          where: { id: account.id },
+          data: { nextCommandSequence: { increment: 1 } },
+          select: { nextCommandSequence: true },
+        });
+        
+        // The assigned sequence is the value before incrementing
+        const assignedSequence = updatedAccount.nextCommandSequence - 1;
+
+        await (tx.connectorCommand.create as any)({
           data: {
             id: connectorCommandId,
             connectorId: account.connectorId,
+            accountId: account.id,
+            accountSequence: assignedSequence,
+            clientExecutionId: event.orderId,
             commandType: 'TRADE_EXECUTE',
             payloadJson: JSON.stringify(payload),
             status: 'PENDING',
+            expiresAt,
           },
         });
 

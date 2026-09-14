@@ -1,9 +1,11 @@
+﻿import { Logger } from 'nestjs-pino';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.useLogger(app.get(Logger));
 
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
@@ -21,3 +23,4 @@ async function bootstrap() {
   console.log('Execution Service is running on port 3006');
 }
 bootstrap();
+

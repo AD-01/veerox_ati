@@ -2,11 +2,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { RefreshTokenCommand } from '../commands/refresh-token.command';
 import { TokenService } from '../../infrastructure/auth/token.service';
 import { JwtService } from '@nestjs/jwt';
-import { AppException } from '@veerox/shared/src/errors/app.exception';
+import { AppException } from '@veerox/shared';
 import { IUserRepository, USER_REPOSITORY } from '../ports/user.repository.interface';
 import { Inject } from '@nestjs/common';
 import { UserStatus } from '../../domain/aggregates/user.aggregate';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import * as argon2 from 'argon2';
 
 @CommandHandler(RefreshTokenCommand)

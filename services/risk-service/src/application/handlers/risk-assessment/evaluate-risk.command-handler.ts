@@ -76,13 +76,15 @@ export class EvaluateRiskCommandHandler implements ICommandHandler<EvaluateRiskC
 
     const [account, strategy] = await Promise.all([
       this.prisma.tradingAccount.findUnique({ where: { id: command.accountId } }),
-      this.prisma.strategy.findUnique({ where: { id: command.strategyId } }),
+      command.strategyId 
+        ? this.prisma.strategy.findUnique({ where: { id: command.strategyId } })
+        : Promise.resolve(null),
     ]);
 
     if (!account || account.workspaceId !== command.workspaceId) {
       throw new ForbiddenException('Trading account does not belong to this workspace');
     }
-    if (!strategy || strategy.organizationId !== organizationId) {
+    if (command.strategyId && (!strategy || strategy.organizationId !== organizationId)) {
       throw new ForbiddenException('Strategy does not belong to this organization');
     }
 

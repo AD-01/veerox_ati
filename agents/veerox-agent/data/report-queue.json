@@ -1,0 +1,20 @@
+[
+  {
+    "type": "EXECUTION_REPORT",
+    "commandId": "cmd-1",
+    "clientExecutionId": "client-1",
+    "brokerTicketId": "ticket-1",
+    "status": "FILLED",
+    "symbol": "EURUSD",
+    "side": "BUY",
+    "executedSize": 1,
+    "executedPrice": 1.1,
+    "executionReportId": "client-1_ticket-1_FILLED",
+    "origin": "VEEROX",
+    "agentId": "agent-1",
+    "organizationId": "org-1",
+    "workspaceId": "workspace-1",
+    "connectorId": "connector-1",
+    "tradingAccountId": "account-1"
+  }
+]

@@ -14,9 +14,9 @@ export class TradingOpportunityEventHandler implements IEventHandler<TradingOppo
 
     const command = new EvaluateRiskCommand(
       event.workspaceId,
-      event.strategyId,
       event.accountId,
       event.symbolId,
+      event.strategyId,
       event.direction as 'LONG' | 'SHORT',
       event.size,
       'system-ati',

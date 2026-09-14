@@ -36,6 +36,11 @@ export class ProcessConnectorResponseHandler implements IEventHandler<ConnectorR
       return;
     }
 
+    if (orderData.status === 'FILLED' || orderData.status === 'FAILED' || orderData.status === 'REJECTED') {
+      console.log(`Order ${orderData.id} is in terminal state ${orderData.status}. Dropping late response.`);
+      return;
+    }
+
     const executionOrder = this.publisher.mergeObjectContext(
       new ExecutionOrder(
         orderData.id,
@@ -57,36 +62,105 @@ export class ProcessConnectorResponseHandler implements IEventHandler<ConnectorR
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (executionOrder as any).status = orderData.status;
     executionOrder['connectorCommandId'] = orderData.connectorCommandId;
-
-    if (event.responseCode === 'SUCCESS' || event.responseCode === 'FILLED') {
+    const orderDataAny = orderData as any;
+    executionOrder.executedSize = Number(orderDataAny.executedSize) || 0;
+    executionOrder.remainingSize = Number(orderDataAny.remainingSize) || Number(orderDataAny.size);
+    executionOrder.brokerOrderId = orderDataAny.brokerOrderId;
+    executionOrder.brokerTicketId = orderDataAny.brokerTicketId;
+    executionOrder.magicNumber = orderDataAny.magicNumber;
+    if (event.responseCode === 'SUCCESS' || event.responseCode === 'FILLED' || event.responseCode === 'PARTIALLY_FILLED') {
       let executedPrice = 0;
+      let executedSize = executionOrder.remainingSize;
+      let brokerOrderId = undefined;
+      let brokerTicketId = undefined;
+      let commission = undefined;
+      let swap = undefined;
+      let realizedPnl = undefined;
+      let brokerDealId = undefined;
+
       if (event.payloadJson) {
         try {
           const payload = JSON.parse(event.payloadJson);
           executedPrice = payload.executedPrice || 0;
+          if (payload.executedSize !== undefined) {
+            executedSize = payload.executedSize;
+          }
+          brokerOrderId = payload.brokerOrderId;
+          brokerTicketId = payload.brokerTicketId;
+          brokerDealId = payload.brokerDealId;
+          commission = payload.commission;
+          swap = payload.swap;
+          realizedPnl = payload.realizedPnl;
         } catch (e) {
           console.error('Failed to parse connector response payload', e);
         }
       }
-      executionOrder.fill(executedPrice);
+      // Temporarily piggyback brokerDealId inside magicNumber field just to pass it through if needed, or we just rely on event.payloadJson below
+      executionOrder.fill(executedPrice, executedSize, brokerOrderId, brokerTicketId, commission, swap, realizedPnl);
     } else if (event.responseCode === 'REJECTED') {
-      executionOrder.reject(event.responseMessage || 'Broker rejected');
+      let reason = event.responseMessage || 'Broker rejected';
+      if (reason.includes('10013')) reason = 'INVALID_STOPS';
+      if (reason.includes('10015')) reason = 'INVALID_PRICE';
+      if (reason.includes('10016')) reason = 'INVALID_STOPS';
+      if (reason.includes('10019')) reason = 'INSUFFICIENT_MARGIN';
+      if (reason.includes('10018')) reason = 'MARKET_CLOSED';
+      executionOrder.reject(reason);
     } else {
-      executionOrder.fail(event.responseMessage || 'Unknown failure');
+      let reason = event.responseMessage || 'Unknown failure';
+      if (reason.includes('MT5_UNAVAILABLE')) reason = 'MT5_UNAVAILABLE';
+      executionOrder.fail(reason);
     }
 
     // Atomic DB transition
-    await this.prisma.$transaction(async (tx) => {
-      const updateResult = await tx.executionOrder.updateMany({
-        where: {
-          id: orderData.id,
-          status: 'DISPATCHED', // MUST currently be dispatched
-        },
-        data: {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // Idempotency check via ExecutionFill
+        if (event.responseCode === 'SUCCESS' || event.responseCode === 'FILLED' || event.responseCode === 'PARTIALLY_FILLED') {
+          let commission = undefined;
+          let swap = undefined;
+          let realizedPnl = undefined;
+          let brokerDealId = undefined;
+          if (event.payloadJson) {
+            try {
+              const payload = JSON.parse(event.payloadJson);
+              commission = payload.commission;
+              swap = payload.swap;
+              realizedPnl = payload.realizedPnl;
+              brokerDealId = payload.brokerDealId;
+            } catch { }
+          }
+          if (executionOrder.brokerTicketId) {
+            await (tx.executionFill.create as any)({
+              data: {
+                executionOrderId: executionOrder.id,
+                brokerTicketId: executionOrder.brokerTicketId,
+                brokerDealId,
+                clientExecutionId: event.responseId, // using responseId as idempotency key
+                brokerOrderId: executionOrder.brokerOrderId,
+                executedSize: executionOrder.executedSize - (Number((orderData as any).executedSize) || 0), // The delta
+                executedPrice: executionOrder.getExecutedPrice() || 0,
+                commission,
+                swap,
+                realizedPnl
+              }
+            });
+          }
+        }
+
+        const updateResult = await (tx.executionOrder.updateMany as any)({
+          where: {
+            id: orderData.id,
+            status: { in: ['DISPATCHED', 'PARTIALLY_FILLED', 'AWAITING_RECONCILIATION'] }, 
+          },
+          data: {
           status: executionOrder.getStatus(),
           executedPrice: executionOrder.getExecutedPrice(),
+          executedSize: executionOrder.executedSize,
+          remainingSize: executionOrder.remainingSize,
+          brokerOrderId: executionOrder.brokerOrderId,
+          brokerTicketId: executionOrder.brokerTicketId,
           failureReason: executionOrder.getFailureReason(),
-          completedAt: new Date(),
+          completedAt: executionOrder.getStatus() === 'FILLED' ? new Date() : null,
         },
       });
 
@@ -102,7 +176,7 @@ export class ProcessConnectorResponseHandler implements IEventHandler<ConnectorR
           actorId: event.connectorId,
           targetEntityId: orderData.id,
           targetEntityType: 'ExecutionOrder',
-          previousState: 'DISPATCHED',
+          previousState: orderData.status,
           newState: executionOrder.getStatus(),
           correlationId: orderData.correlationId,
           organizationId: orderData.organizationId,
@@ -113,5 +187,17 @@ export class ProcessConnectorResponseHandler implements IEventHandler<ConnectorR
 
       await this.outboxService.saveEvents(tx, 'ExecutionOrder', executionOrder.id, executionOrder);
     });
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error as Record<string, unknown>).code === 'P2002'
+      ) {
+        console.warn(`Duplicate execution response for order ${orderData.id} (ExecutionFill idempotency). Dropping.`);
+        return;
+      }
+      throw error;
+    }
   }
 }

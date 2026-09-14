@@ -2,8 +2,8 @@ import { EventsHandler, IEventHandler, CommandBus } from '@nestjs/cqrs';
 import { EvaluateRiskCommand } from '../../commands/risk-assessment/evaluate-risk.command';
 import { PrismaService, OpenPositionReadModel } from '@veerox/database';
 
-import { MarketSnapshotGeneratedEvent } from '@veerox/events/src/market.events';
-import { PortfolioSynchronizedEvent } from '@veerox/events/src/trading-account.events';
+import { MarketSnapshotGeneratedEvent } from '@veerox/events';
+import { PortfolioSynchronizedEvent } from '@veerox/events';
 
 @EventsHandler(MarketSnapshotGeneratedEvent, PortfolioSynchronizedEvent)
 export class RecalculateRiskEventHandler implements IEventHandler<MarketSnapshotGeneratedEvent | PortfolioSynchronizedEvent> {

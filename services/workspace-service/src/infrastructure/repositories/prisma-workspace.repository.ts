@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { IWorkspaceRepository } from '../../domain/repositories/workspace.repository.interface';
 import { Workspace, WorkspaceStatus } from '../../domain/aggregates/workspace.aggregate';
 import { WorkspaceConfig, WorkspaceConfigProps } from '../../domain/value-objects/workspace-config.vo';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @Injectable()
 export class PrismaWorkspaceRepository implements IWorkspaceRepository {
@@ -54,10 +54,13 @@ export class PrismaWorkspaceRepository implements IWorkspaceRepository {
       const currentMemberIds = Array.from(workspace.memberRoles.keys());
       
       if (currentMemberIds.length > 0) {
-        await tx.workspaceMember.deleteMany({
+        await tx.workspaceMember.updateMany({
           where: {
             workspaceId: workspace.id,
             userId: { notIn: currentMemberIds }
+          },
+          data: {
+            status: 'REVOKED'
           }
         });
         await tx.userRole.deleteMany({

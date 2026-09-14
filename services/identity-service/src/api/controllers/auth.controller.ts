@@ -7,6 +7,7 @@ import { RefreshTokenCommand } from '../../application/commands/refresh-token.co
 import { GetMeQuery } from '../../application/queries/get-me.query';
 import { LoginDto, RefreshTokenDto } from '../dto/auth.dto';
 import { JwtAuthGuard } from '../../infrastructure/auth/jwt-auth.guard';
+import { RateLimit, RateLimitGuard } from '@veerox/shared';
 
 @Controller('api/v1/auth')
 export class AuthController {
@@ -17,6 +18,8 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ keyPrefix: 'rate-limit:auth:login:', limit: 10, windowSeconds: 300, ipLimit: 50, ipWindowSeconds: 300, extractKey: 'login', failPolicy: 'closed' })
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async login(@Req() req: any & { user?: Record<string, unknown> }, @Body() dto: LoginDto) {
     const ip = req.ip || req.connection?.remoteAddress || 'unknown';

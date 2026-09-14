@@ -2,11 +2,11 @@
 import { AssignRoleHandler } from './assign-role.handler';
 import { AssignRoleCommand } from '../commands/assign-role.command';
 import { EventBus } from '@nestjs/cqrs';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { IUserRepository } from '../ports/user.repository.interface';
 import { IAuditRepository } from '../ports/audit.repository.interface';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { UserRoleChangedEvent } from '@veerox/events/src/identity.events';
+import { UserRoleChangedEvent } from '@veerox/events';
 import { User, UserStatus } from '../../domain/aggregates/user.aggregate';
 
 describe('AssignRoleHandler', () => {

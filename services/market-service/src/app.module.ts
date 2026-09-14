@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+﻿import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ConfigModule } from '@nestjs/config';
+import { ObservabilityModule, RequestContextMiddleware } from '@veerox/shared';
 import { PrismaService } from '@veerox/database/src/prisma.service';
 import { RedisService } from '@veerox/shared/src/redis/redis.service';
 
@@ -52,6 +53,7 @@ const EventHandlers = [
 
 @Module({
   imports: [
+    ObservabilityModule,
     CqrsModule,
     ConfigModule.forRoot({ isGlobal: true }),
   ],
@@ -95,4 +97,9 @@ const EventHandlers = [
     ...EventHandlers,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestContextMiddleware).forRoutes('*');
+  }
+}
+

@@ -4,7 +4,7 @@ import { ProcessMarketDataCommand } from '../commands/process-market-data.comman
 import { ISymbolRepository, SYMBOL_REPOSITORY } from '../ports/symbol.repository.interface';
 import { EventPublisher } from '@veerox/shared';
 import { MarketDataUpdatedEvent } from '@veerox/events';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @CommandHandler(ProcessMarketDataCommand)
 export class ProcessMarketDataHandler implements ICommandHandler<ProcessMarketDataCommand> {

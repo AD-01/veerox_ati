@@ -12,11 +12,8 @@ export class TradingOpportunityEventHandler implements IEventHandler<TradingOppo
   async handle(event: TradingOpportunityGeneratedEvent) {
     this.logger.log(`Received Trading Opportunity ${event.correlationId} for Strategy ${event.strategyId}. Submitting for correlation.`);
 
-    await this.correlationService.correlate({
-      correlationId: event.correlationId,
-      workspaceId: event.workspaceId,
-      organizationId: event.organizationId,
-      opportunityPayload: event,
-    });
+    // S-20: TradingOpportunityGeneratedEvent is now intercepted by Orchestrator.
+    // Decision service no longer correlates this event directly to prevent bypassing the Orchestrator.
+    // It remains here for analytics tracking if needed, but execution happens via SignalOrchestratedEvent.
   }
 }

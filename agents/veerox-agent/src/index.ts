@@ -1,30 +1,55 @@
 import { config } from 'dotenv';
-import { Agent } from './agent';
+import { AgentRuntime } from './core/agent-runtime';
+import { WebSocketClientTransport } from './transport/websocket-transport';
+import { TcpBridge } from './mt5-bridge/tcp-bridge';
 
 config();
 
-const CONNECTOR_ID = process.env.CONNECTOR_ID;
-const CONNECTOR_SECRET = process.env.CONNECTOR_SECRET;
-const ORG_ID = process.env.ORG_ID;
-const WORKSPACE_ID = process.env.WORKSPACE_ID;
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const CONNECTOR_ID = process.env.CONNECTOR_ID || 'connector-local';
+const CONNECTOR_SECRET = process.env.CONNECTOR_SECRET || 'secret';
+const ORG_ID = process.env.ORG_ID || 'org-local';
+const WORKSPACE_ID = process.env.WORKSPACE_ID || 'workspace-local';
+const ACCOUNT_ID = process.env.ACCOUNT_ID || 'account-local';
+const AGENT_ID = process.env.AGENT_ID || 'agent-local';
+const WS_URL = process.env.WS_URL || 'wss://localhost:4000/agent';
 
-if (!CONNECTOR_ID || !CONNECTOR_SECRET || !ORG_ID || !WORKSPACE_ID) {
-  console.error('[MockAgent] Missing required environment variables:');
-  console.error('CONNECTOR_ID, CONNECTOR_SECRET, ORG_ID, WORKSPACE_ID');
-  process.exit(1);
+async function bootstrap() {
+  console.log(`[Agent] Booting S-22 Phase 03 Agent Runtime...`);
+  
+  const transport = new WebSocketClientTransport(WS_URL, WS_URL.startsWith('wss://'));
+  const tcpBridge = new TcpBridge(1337);
+  
+  tcpBridge.start();
+
+  const runtime = new AgentRuntime(
+    transport,
+    tcpBridge,
+    AGENT_ID,
+    CONNECTOR_SECRET,
+    ORG_ID,
+    WORKSPACE_ID,
+    CONNECTOR_ID,
+    ACCOUNT_ID
+  );
+
+  await runtime.start();
+
+  console.log(`[Agent] Started and connecting to transport...`);
+
+  process.on('SIGINT', () => {
+    console.log(`[Agent] Stopping...`);
+    runtime.stop();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', () => {
+    console.log(`[Agent] Stopping...`);
+    runtime.stop();
+    process.exit(0);
+  });
 }
 
-const agent = new Agent(CONNECTOR_ID, CONNECTOR_SECRET, ORG_ID, WORKSPACE_ID, BASE_URL);
-
-agent.start();
-
-process.on('SIGINT', () => {
-  agent.stop();
-  process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  agent.stop();
-  process.exit(0);
+bootstrap().catch(err => {
+  console.error(`[Agent] Fatal bootstrap error:`, err);
+  process.exit(1);
 });

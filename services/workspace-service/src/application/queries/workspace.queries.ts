@@ -26,3 +26,19 @@ export class GetWorkspaceMemberQuery {
     public readonly organizationId: string,
   ) {}
 }
+
+export class GetWorkspaceAuditLogsQuery {
+  constructor(
+    public readonly workspaceId: string,
+    public readonly organizationId: string,
+    public readonly filters?: {
+      action?: string;
+      actorId?: string;
+      targetEntityId?: string;
+      startDate?: string;
+      endDate?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ) {}
+}

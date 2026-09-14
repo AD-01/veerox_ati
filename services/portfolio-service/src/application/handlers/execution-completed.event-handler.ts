@@ -43,6 +43,9 @@ export class ExecutionCompletedEventHandler implements IEventHandler<ExecutionOr
           throw new Error('Tenant isolation violation: Event credentials do not match account.');
         }
 
+        const workspace = await tx.workspace.findUnique({ where: { id: event.workspaceId } });
+        // S-21 MT5 HEDGING mode is fully supported now via the updated Ledger logic.
+
         // 2. Fetch Symbol (to get contractSize)
         const symbol = await tx.symbol.findUnique({ where: { id: event.symbolId } });
         if (!symbol) {
@@ -54,55 +57,63 @@ export class ExecutionCompletedEventHandler implements IEventHandler<ExecutionOr
         const activePosition = await this.positionRepo.findActiveBySymbol(account.id, symbol.id, tx);
 
         // 4. Ledger Domain Logic
-        const { account: updatedAccount, position: updatedPosition, tradePnl } = this.ledgerService.processFill(
+        const { account: updatedAccount, positions, tradePnl } = this.ledgerService.processFill(
           account,
           activePosition,
           symbol.id,
           contractSize,
           event.side!,
-          event.size!,
+          event.executedSize || event.size!, // Use executedSize if available (partial fill support)
           event.executedPrice,
-          event.correlationId || null
+          event.correlationId || null,
+          (workspace as any)?.portfolioMode || 'NETTING',
+          event.brokerTicketId || null,
+          event.magicNumber || null
         );
 
         // 5. Create PortfolioTransaction (Idempotency check happens here via @@unique on executionOrderId)
-        await tx.portfolioTransaction.create({
+        await (tx.portfolioTransaction.create as any)({
           data: {
             organizationId: account.organizationId,
             workspaceId: account.workspaceId,
             tradingAccountId: account.id,
             executionOrderId: event.orderId,
             type: 'TRADE_FILL',
-            amount: event.size!,
+            amount: event.executedSize || event.size!,
             currency: account.currency,
             balanceBefore: account.balance.toNumber(),
             balanceAfter: updatedAccount.balance.toNumber(),
-            realizedPnl: tradePnl.toNumber(),
+            realizedPnl: event.realizedPnl ?? tradePnl.toNumber(),
+            commission: event.commission ?? null,
+            swap: event.swap ?? null,
           },
         });
 
         // 6. Save State (Optimistic Locking)
-        await this.positionRepo.save(updatedPosition, tx);
+        for (const pos of positions) {
+          await this.positionRepo.save(pos, tx);
+        }
         await this.accountRepo.save(updatedAccount, tx);
 
         // 7. Audit Log
-        await tx.auditLog.create({
-          data: {
-            actorId: null,
-            targetUserId: null,
-            action: activePosition ? 'POSITION_UPDATED' : 'POSITION_OPENED',
-            previousState: activePosition ? JSON.stringify({ quantity: activePosition.quantity, status: activePosition.status }) as any : null,
-            newState: JSON.stringify({ quantity: updatedPosition.quantity, status: updatedPosition.status, pnl: tradePnl }) as any,
-            correlationId: event.correlationId,
-            organizationId: account.organizationId,
-            workspaceId: account.workspaceId,
-            targetEntityId: updatedPosition.id,
-            targetEntityType: 'Position',
-          }
-        });
-
-        // 8. Commit Events using Outbox (Transactional)
-        await this.outboxService.saveEvents(tx, 'Position', updatedPosition.id, updatedPosition);
+        for (const pos of positions) {
+          await tx.auditLog.create({
+            data: {
+              actorId: null,
+              targetUserId: null,
+              action: activePosition ? 'POSITION_UPDATED' : 'POSITION_OPENED',
+              previousState: activePosition ? JSON.stringify({ quantity: activePosition.quantity, status: activePosition.status }) as any : null,
+              newState: JSON.stringify({ quantity: pos.quantity, status: pos.status, pnl: tradePnl }) as any,
+              correlationId: event.correlationId,
+              organizationId: account.organizationId,
+              workspaceId: account.workspaceId,
+              targetEntityId: pos.id,
+              targetEntityType: 'Position',
+            }
+          });
+          // 8. Commit Events using Outbox (Transactional)
+          await this.outboxService.saveEvents(tx, 'Position', pos.id, pos);
+        }
         await this.outboxService.saveEvents(tx, 'TradingAccount', updatedAccount.id, updatedAccount);
       });
     } catch (error: any) {

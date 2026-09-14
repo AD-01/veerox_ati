@@ -4,17 +4,17 @@ import { PrismaService } from '@veerox/database';
 import { StrategyFactory } from '../strategies/strategy.factory';
 import { StrategyOrchestrationRepository } from '../../infrastructure/repositories/strategy-orchestration.repository';
 import { OpenPositionRepository } from '../../infrastructure/repositories/open-position.repository';
-import { StrategyOrchestration } from '../aggregates/strategy-orchestration.aggregate';
 
 describe('LiveRunnerService', () => {
   let service: LiveRunnerService;
   let prisma: jest.Mocked<PrismaService>;
   let strategyFactory: jest.Mocked<StrategyFactory>;
   let orchestrationRepo: jest.Mocked<StrategyOrchestrationRepository>;
-  let positionRepo: jest.Mocked<OpenPositionRepository>;
 
   beforeEach(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const prismaMock: any = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       $transaction: jest.fn(async (cb: any) => {
         return cb(prismaMock);
       }),
@@ -41,17 +41,13 @@ describe('LiveRunnerService', () => {
       findActiveOrchestrations: jest.fn(),
     };
 
-    const positionRepoMock = {
-      findByWorkspaceAndSymbol: jest.fn(),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LiveRunnerService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: StrategyFactory, useValue: strategyFactoryMock },
         { provide: StrategyOrchestrationRepository, useValue: orchestrationRepoMock },
-        { provide: OpenPositionRepository, useValue: positionRepoMock },
+        { provide: OpenPositionRepository, useValue: { findByWorkspaceAndSymbol: jest.fn() } },
       ],
     }).compile();
 
@@ -59,7 +55,6 @@ describe('LiveRunnerService', () => {
     prisma = module.get(PrismaService);
     strategyFactory = module.get(StrategyFactory);
     orchestrationRepo = module.get(StrategyOrchestrationRepository);
-    positionRepo = module.get(OpenPositionRepository);
   });
 
   it('should be defined', () => {
@@ -74,6 +69,7 @@ describe('LiveRunnerService', () => {
 
     it('should process closed candles and emit outbox message on strategy signal', async () => {
       orchestrationRepo.findActiveOrchestrations.mockResolvedValue([
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { workspaceId: 'ws1', currentStrategyId: 'strat1', currentExpertAdvisorId: null } as any
       ]);
 
@@ -103,6 +99,7 @@ describe('LiveRunnerService', () => {
           lotSize: 0.1,
         })
       };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       strategyFactory.create.mockReturnValue(mockStrategy as any);
 
       await service.processMarketDataUpdate('sym1', 'M1', new Date(), 1.1, 1.2, 1.0, 1.15, 100, true);
@@ -116,6 +113,7 @@ describe('LiveRunnerService', () => {
 
     it('should safely ignore P2002 error from concurrent duplicate execution', async () => {
       orchestrationRepo.findActiveOrchestrations.mockResolvedValue([
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { workspaceId: 'ws1', currentStrategyId: 'strat1', currentExpertAdvisorId: null } as any
       ]);
 
@@ -143,6 +141,7 @@ describe('LiveRunnerService', () => {
           lotSize: 0.1,
         })
       };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       strategyFactory.create.mockReturnValue(mockStrategy as any);
 
       // Simulate concurrent duplicate violation during create
@@ -161,6 +160,7 @@ describe('LiveRunnerService', () => {
 
     it('should propagate non-P2002 database errors', async () => {
       orchestrationRepo.findActiveOrchestrations.mockResolvedValue([
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { workspaceId: 'ws1', currentStrategyId: 'strat1', currentExpertAdvisorId: null } as any
       ]);
 

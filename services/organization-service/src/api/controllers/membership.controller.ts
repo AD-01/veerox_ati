@@ -3,8 +3,10 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { InviteMemberCommand } from '../../application/commands/invite-member.command';
 import { AcceptInvitationCommand } from '../../application/commands/accept-invitation.command';
 import { RemoveMemberCommand } from '../../application/commands/remove-member.command';
+import { UpdateOrganizationMemberRoleCommand } from '../../application/commands/update-organization-member-role.command';
 import { GetMembersQuery, GetPendingInvitationsQuery } from '../../application/queries/organization.queries';
 import { JwtAuthGuard } from '../../infrastructure/auth/jwt-auth.guard';
+import { OrganizationManageAccess } from '@veerox/shared';
 import { Request } from 'express';
 
 interface AuthenticatedUser {
@@ -17,6 +19,10 @@ interface InviteMemberDto {
 
 interface AcceptInvitationDto {
   token: string;
+}
+
+interface UpdateRoleDto {
+  role: string;
 }
 @Controller('organizations')
 @UseGuards(JwtAuthGuard)
@@ -59,10 +65,20 @@ export class MembershipController {
   }
 
   @Delete(':id/members/:userId')
+  @OrganizationManageAccess()
   async removeMember(@Req() req: Request, @Param('id') id: string, @Param('userId') userId: string) {
     const actorId = (req.user as AuthenticatedUser).userId;
     const command = new RemoveMemberCommand(id, userId, actorId);
     await this.commandBus.execute(command);
     return { message: 'Member removed successfully' };
+  }
+
+  @Post(':id/members/:userId/role')
+  @OrganizationManageAccess()
+  async updateMemberRole(@Req() req: Request, @Param('id') id: string, @Param('userId') userId: string, @Body() body: UpdateRoleDto) {
+    const actorId = (req.user as AuthenticatedUser).userId;
+    const command = new UpdateOrganizationMemberRoleCommand(id, userId, body.role, actorId);
+    await this.commandBus.execute(command);
+    return { message: 'Member role updated successfully' };
   }
 }

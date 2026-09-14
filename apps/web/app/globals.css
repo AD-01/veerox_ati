@@ -1,0 +1,207 @@
+/* Veerox ATI Design System Tokens - Dark First Aesthetic */
+:root {
+  /* Surfaces */
+  --color-bg: #07090e;
+  --color-surface-base: #0b0f19;
+  --color-surface-panel: #111827;
+  --color-surface-card: #151d30;
+  --color-surface-card-hover: #1b253d;
+  --color-surface-input: #0e1422;
+  --color-surface-glass: rgba(17, 24, 39, 0.75);
+  --color-surface-overlay: rgba(7, 9, 14, 0.85);
+
+  /* Borders */
+  --color-border-subtle: #1e293b;
+  --color-border-muted: #27354f;
+  --color-border-hover: #3b82f6;
+  --color-border-brand: #06b6d4;
+
+  /* Typography & Text */
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-text-dim: #475569;
+  --color-text-inverse: #07090e;
+
+  /* Brand Accents */
+  --color-brand-cyan: #06b6d4;
+  --color-brand-cyan-hover: #0891b2;
+  --color-brand-cyan-glow: rgba(6, 182, 212, 0.2);
+  --color-brand-emerald: #10b981;
+  --color-brand-emerald-glow: rgba(16, 185, 129, 0.2);
+  --color-brand-violet: #8b5cf6;
+
+  /* Semantics */
+  --color-success: #10b981;
+  --color-success-bg: rgba(16, 185, 129, 0.12);
+  --color-success-border: rgba(16, 185, 129, 0.3);
+
+  --color-danger: #ef4444;
+  --color-danger-bg: rgba(239, 68, 68, 0.12);
+  --color-danger-border: rgba(239, 68, 68, 0.3);
+
+  --color-warning: #f59e0b;
+  --color-warning-bg: rgba(245, 158, 11, 0.12);
+  --color-warning-border: rgba(245, 158, 11, 0.3);
+
+  --color-info: #3b82f6;
+  --color-info-bg: rgba(59, 130, 246, 0.12);
+  --color-info-border: rgba(59, 130, 246, 0.3);
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Typography Scale */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  --text-4xl: 36px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px -2px var(--color-brand-cyan-glow);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base resets and defaults */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-muted);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
+}
+
+/* App Layout Utilities */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--color-bg);
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.page-wrapper {
+  padding: 32px;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .page-wrapper {
+    padding: 16px;
+  }
+}
+
+/* S-24 Cockpit Grid Layout */
+.cockpit-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+/* Tablet (8-column) */
+@media (min-width: 768px) {
+  .cockpit-grid {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+  .cockpit-col-full {
+    grid-column: span 8 / span 8;
+  }
+  .cockpit-col-main {
+    grid-column: span 8 / span 8;
+  }
+  .cockpit-col-side {
+    grid-column: span 8 / span 8;
+  }
+}
+
+/* Desktop (12-column) */
+@media (min-width: 1024px) {
+  .cockpit-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+  .cockpit-col-full {
+    grid-column: span 12 / span 12;
+  }
+  .cockpit-col-main {
+    grid-column: span 8 / span 8;
+  }
+  .cockpit-col-side {
+    grid-column: span 4 / span 4;
+  }
+}

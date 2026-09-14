@@ -3,7 +3,7 @@ import { CommandHandler, ICommandHandler, EventBus } from '@nestjs/cqrs';
 import { ArchiveOrganizationCommand } from '../commands/archive-organization.command';
 import { IOrganizationRepository, ORGANIZATION_REPOSITORY } from '../../domain/repositories/organization.repository.interface';
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { AuthorizationService } from '../../domain/services/authorization.service';
 import { ForbiddenException } from '@nestjs/common';
 

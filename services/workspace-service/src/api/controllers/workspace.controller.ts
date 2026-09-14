@@ -13,13 +13,13 @@ import { UpdateWorkspaceMemberRoleCommand } from '../../application/commands/upd
 import { GetWorkspaceQuery, ListWorkspacesQuery, ListWorkspaceMembersQuery } from '../../application/queries/workspace.queries';
 
 import { JwtAuthGuard } from '../../infrastructure/auth/jwt-auth.guard';
-import { WorkspaceScopeGuard } from '../../infrastructure/auth/workspace-scope.guard';
+import { WorkspaceScopeGuard } from '@veerox/shared';
 import { 
   OrganizationManageAccess, 
   OrganizationReadAccess, 
   WorkspaceManageAccess, 
   WorkspaceReadAccess 
-} from '../../infrastructure/auth/decorators';
+} from '@veerox/shared';
 
 interface AuthenticatedUser {
   userId: string;

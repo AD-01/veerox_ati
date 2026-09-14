@@ -9,7 +9,7 @@ import {
   WorkspaceMemberAddedEvent,
   WorkspaceMemberRemovedEvent,
   WorkspaceMemberRoleUpdatedEvent,
-} from '@veerox/events/src/workspace.events';
+} from '@veerox/events';
 import { WorkspaceConfig, WorkspaceConfigProps } from '../value-objects/workspace-config.vo';
 
 export enum WorkspaceStatus {

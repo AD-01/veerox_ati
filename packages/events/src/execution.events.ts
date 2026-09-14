@@ -8,6 +8,7 @@ export class ConnectorCommandIssuedEvent extends DomainEvent {
     public readonly commandType: string,
     public readonly payloadJson: string,
     public readonly issuedAt: Date,
+    public readonly expiresAt: Date,
   ) {
     super();
   }
@@ -75,6 +76,13 @@ export class ExecutionOrderCompletedEvent extends DomainEvent {
     public readonly side?: string,
     public readonly size?: number,
     public readonly correlationId?: string | null,
+    public readonly brokerOrderId?: string | null,
+    public readonly brokerTicketId?: string | null,
+    public readonly magicNumber?: string | null,
+    public readonly executedSize?: number,
+    public readonly commission?: number,
+    public readonly swap?: number,
+    public readonly realizedPnl?: number,
   ) {
     super();
   }
@@ -90,6 +98,52 @@ export class ExecutionOrderFailedEvent extends DomainEvent {
     public readonly connectorCommandId: string | null,
     public readonly timestamp: Date,
     // Backward compatible additions:
+    public readonly symbolId?: string,
+    public readonly side?: string,
+    public readonly size?: number,
+    public readonly correlationId?: string | null,
+    public readonly brokerOrderId?: string | null,
+    public readonly brokerTicketId?: string | null,
+    public readonly magicNumber?: string | null,
+  ) {
+    super();
+  }
+}
+
+export class ExecutionOrderPartiallyFilledEvent extends DomainEvent {
+  constructor(
+    public readonly orderId: string,
+    public readonly workspaceId: string,
+    public readonly organizationId: string,
+    public readonly accountId: string,
+    public readonly executedPrice: number,
+    public readonly executedSize: number,
+    public readonly remainingSize: number,
+    public readonly connectorCommandId: string | null,
+    public readonly timestamp: Date,
+    public readonly brokerOrderId?: string | null,
+    public readonly brokerTicketId?: string | null,
+    public readonly magicNumber?: string | null,
+    public readonly symbolId?: string,
+    public readonly side?: string,
+    public readonly correlationId?: string | null,
+    public readonly commission?: number,
+    public readonly swap?: number,
+    public readonly realizedPnl?: number,
+  ) {
+    super();
+  }
+}
+
+export class ExecutionOrderUncertainEvent extends DomainEvent {
+  constructor(
+    public readonly orderId: string,
+    public readonly workspaceId: string,
+    public readonly organizationId: string,
+    public readonly accountId: string,
+    public readonly failureReason: string,
+    public readonly connectorCommandId: string | null,
+    public readonly timestamp: Date,
     public readonly symbolId?: string,
     public readonly side?: string,
     public readonly size?: number,

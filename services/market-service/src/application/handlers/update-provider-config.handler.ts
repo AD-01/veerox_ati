@@ -3,7 +3,7 @@ import { Inject, UnauthorizedException, NotFoundException } from '@nestjs/common
 import { UpdateProviderConfigCommand } from '../commands/update-provider-config.command';
 import { IMarketProviderRepository, MARKET_PROVIDER_REPOSITORY } from '../ports/market-provider.repository.interface';
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @CommandHandler(UpdateProviderConfigCommand)
 export class UpdateProviderConfigHandler implements ICommandHandler<UpdateProviderConfigCommand> {

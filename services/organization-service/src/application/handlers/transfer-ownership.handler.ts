@@ -4,7 +4,7 @@ import { TransferOrganizationOwnershipCommand } from '../commands/transfer-owner
 import { IOrganizationRepository, ORGANIZATION_REPOSITORY } from '../../domain/repositories/organization.repository.interface';
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
 import { OrganizationStatus } from '../../domain/aggregates/organization.aggregate';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @CommandHandler(TransferOrganizationOwnershipCommand)
 export class TransferOrganizationOwnershipHandler implements ICommandHandler<TransferOrganizationOwnershipCommand> {

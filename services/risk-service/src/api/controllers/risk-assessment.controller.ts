@@ -8,7 +8,7 @@ import { GetRiskAssessmentsQuery } from '../../application/queries/risk-assessme
 import { RiskAssessment } from '../../domain/aggregates/risk-assessment.aggregate';
 
 import { JwtAuthGuard } from '../../infrastructure/auth/jwt-auth.guard';
-import { WorkspaceScopeGuard } from '../../infrastructure/auth/workspace-scope.guard';
+import { WorkspaceScopeGuard } from '@veerox/shared';
 
 @Controller('api/v1/risk')
 @UseGuards(JwtAuthGuard, WorkspaceScopeGuard)
@@ -29,9 +29,9 @@ export class RiskAssessmentController {
 
     const command = new EvaluateRiskCommand(
       workspaceId,
-      dto.strategyId,
       dto.accountId,
       dto.symbolId,
+      dto.strategyId,
       dto.tradeDirection,
       dto.requestedSize,
       actorId,

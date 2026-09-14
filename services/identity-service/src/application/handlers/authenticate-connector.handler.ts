@@ -3,10 +3,10 @@ import { Inject, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 
 import { AuthenticateConnectorCommand } from '../commands/authenticate-connector.command';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { TokenService, MachineTokenPayload } from '../../infrastructure/auth/token.service';
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
-import { ConnectorAuthenticatedEvent } from '@veerox/events/src/connector.events';
+import { ConnectorAuthenticatedEvent } from '@veerox/events';
 
 export interface ConnectorLoginResult {
   accessToken: string;

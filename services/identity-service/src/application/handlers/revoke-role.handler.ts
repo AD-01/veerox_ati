@@ -2,10 +2,10 @@ import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { Inject, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { RevokeRoleCommand } from '../commands/revoke-role.command';
 import { IUserRepository, USER_REPOSITORY } from '../ports/user.repository.interface';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
 import { AuthorizationService } from '../../domain/services/authorization.service';
-import { UserRoleChangedEvent } from '@veerox/events/src/identity.events';
+import { UserRoleChangedEvent } from '@veerox/events';
 
 @CommandHandler(RevokeRoleCommand)
 export class RevokeRoleHandler implements ICommandHandler<RevokeRoleCommand> {

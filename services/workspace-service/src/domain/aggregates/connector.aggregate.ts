@@ -6,8 +6,8 @@ import {
   ConnectorConnectedEvent,
   ConnectorDisconnectedEvent,
   ConnectorHeartbeatReceivedEvent,
-} from '@veerox/events/src/connector.events';
-import { ConnectorCommandIssuedEvent } from '@veerox/events/src/execution.events';
+} from '@veerox/events';
+import { ConnectorCommandIssuedEvent } from '@veerox/events';
 
 export enum ConnectorStatus {
   ACTIVE = 'ACTIVE',
@@ -167,6 +167,7 @@ export class Connector extends BaseAggregateRoot {
         commandType,
         payloadJson,
         new Date(),
+        new Date(Date.now() + 30 * 1000), // Default 30s expiration
       ),
     );
   }

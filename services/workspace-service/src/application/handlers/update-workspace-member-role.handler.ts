@@ -3,6 +3,9 @@ import { CommandHandler, ICommandHandler, EventBus } from '@nestjs/cqrs';
 import { UpdateWorkspaceMemberRoleCommand } from '../commands/update-workspace-member-role.command';
 import { IWorkspaceRepository, WORKSPACE_REPOSITORY } from '../../domain/repositories/workspace.repository.interface';
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
+import { PrismaService } from '@veerox/database';
+
+import { RolePolicy } from '@veerox/shared';
 
 @CommandHandler(UpdateWorkspaceMemberRoleCommand)
 export class UpdateWorkspaceMemberRoleHandler implements ICommandHandler<UpdateWorkspaceMemberRoleCommand> {
@@ -12,6 +15,7 @@ export class UpdateWorkspaceMemberRoleHandler implements ICommandHandler<UpdateW
     @Inject(AUDIT_REPOSITORY)
     private readonly auditRepository: IAuditRepository,
     private readonly eventBus: EventBus,
+    private readonly prisma: PrismaService,
   ) {}
 
   async execute(command: UpdateWorkspaceMemberRoleCommand): Promise<void> {
@@ -27,6 +31,21 @@ export class UpdateWorkspaceMemberRoleHandler implements ICommandHandler<UpdateW
 
     if (command.actorUserId === command.targetUserId) {
       throw new ConflictException('Users cannot modify their own roles');
+    }
+
+    const actorRoles = await this.prisma.userRole.findMany({
+      where: { userId: command.actorUserId, workspaceId: command.workspaceId },
+      include: { role: true }
+    });
+
+    const targetRoles = await this.prisma.userRole.findMany({
+      where: { userId: command.targetUserId, workspaceId: command.workspaceId },
+      include: { role: true }
+    });
+
+    const canMutate = RolePolicy.canMutateMember(actorRoles, targetRoles, command.actorUserId === command.targetUserId, command.role);
+    if (!canMutate) {
+      throw new ForbiddenException('Insufficient role weight to modify this user to the requested role');
     }
 
     const previousState = JSON.stringify({

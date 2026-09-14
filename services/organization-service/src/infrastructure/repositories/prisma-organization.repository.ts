@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { IOrganizationRepository } from '../../domain/repositories/organization.repository.interface';
 import { Organization, OrganizationStatus } from '../../domain/aggregates/organization.aggregate';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @Injectable()
 export class PrismaOrganizationRepository implements IOrganizationRepository {

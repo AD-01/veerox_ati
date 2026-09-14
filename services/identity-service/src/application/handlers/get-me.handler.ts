@@ -1,7 +1,7 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { GetMeQuery } from '../queries/get-me.query';
-import { PrismaService } from '@veerox/database/src/prisma.service';
-import { AppException } from '@veerox/shared/src/errors/app.exception';
+import { PrismaService } from '@veerox/database';
+import { AppException } from '@veerox/shared';
 
 @QueryHandler(GetMeQuery)
 export class GetMeHandler implements IQueryHandler<GetMeQuery> {

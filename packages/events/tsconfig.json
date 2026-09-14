@@ -1,13 +1,17 @@
 {
-    "compilerOptions":  {
-                            "baseUrl":  "."
-                        },
-    "include":  [
-                    "src/**/*"
-                ],
-    "exclude":  [
-                    "node_modules",
-                    "dist"
-                ],
-    "extends":  "@veerox/config/tsconfig.base.json"
+    "compilerOptions": {
+        "baseUrl": ".",
+        "outDir": "./dist",
+        "module": "CommonJS",
+        "target": "ES2021",
+        "declaration": true
+    },
+    "include": [
+        "src/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ],
+    "extends": "@veerox/config/tsconfig.base.json"
 }

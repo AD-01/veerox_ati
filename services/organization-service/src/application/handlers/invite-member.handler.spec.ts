@@ -3,7 +3,7 @@ import { InviteMemberHandler, INVITATION_REPOSITORY } from './invite-member.hand
 import { InviteMemberCommand } from '../commands/invite-member.command';
 import { ORGANIZATION_REPOSITORY } from '../../domain/repositories/organization.repository.interface';
 import { AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { EventBus } from '@nestjs/cqrs';
 import { ForbiddenException, ConflictException } from '@nestjs/common';
 import { OrganizationStatus } from '../../domain/aggregates/organization.aggregate';

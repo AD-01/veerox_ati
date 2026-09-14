@@ -7,7 +7,7 @@ import {
   WorkspaceMemberAddedEvent,
   WorkspaceMemberRemovedEvent,
   WorkspaceMemberRoleUpdatedEvent
-} from '@veerox/events/src/workspace.events';
+} from '@veerox/events';
 
 describe('Workspace Aggregate', () => {
   let workspace: Workspace;

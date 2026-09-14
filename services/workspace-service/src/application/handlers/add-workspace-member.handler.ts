@@ -3,7 +3,7 @@ import { CommandHandler, ICommandHandler, EventBus } from '@nestjs/cqrs';
 import { AddWorkspaceMemberCommand } from '../commands/add-workspace-member.command';
 import { IWorkspaceRepository, WORKSPACE_REPOSITORY } from '../../domain/repositories/workspace.repository.interface';
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @CommandHandler(AddWorkspaceMemberCommand)
 export class AddWorkspaceMemberHandler implements ICommandHandler<AddWorkspaceMemberCommand> {

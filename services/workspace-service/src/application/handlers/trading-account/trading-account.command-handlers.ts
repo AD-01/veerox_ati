@@ -357,7 +357,7 @@ export class SyncOpenPositionsHandler implements ICommandHandler<SyncOpenPositio
     }
 
     // 3. Emit PortfolioSynchronizedEvent
-    const { PortfolioSynchronizedEvent } = await import('@veerox/events/src/trading-account.events');
+    const { PortfolioSynchronizedEvent } = await import('@veerox/events');
     const event = new PortfolioSynchronizedEvent(
       command.accountId,
       command.workspaceId,

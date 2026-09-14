@@ -11,8 +11,8 @@ import {
 } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { JwtAuthGuard } from '../../infrastructure/auth/jwt-auth.guard';
-import { WorkspaceScopeGuard } from '../../infrastructure/auth/workspace-scope.guard';
-import { CurrentUser } from '../../infrastructure/auth/decorators';
+import { WorkspaceScopeGuard } from '@veerox/shared';
+import { CurrentUser } from '@veerox/shared';
 import { ConfigureRiskProfileDto } from '../dto/configure-risk-profile.dto';
 import { ConfigureRiskProfileCommand } from '../../application/commands/risk-profile.commands';
 import { PrismaService } from '@veerox/database';

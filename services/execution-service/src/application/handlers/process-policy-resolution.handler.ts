@@ -86,7 +86,7 @@ export class ProcessPolicyResolutionHandler implements IEventHandler<PolicyDecis
 
     try {
       await this.prisma.$transaction(async (tx) => {
-        await tx.executionOrder.create({
+        await (tx.executionOrder.create as any)({
           data: {
             id: orderId,
             workspaceId: event.workspaceId,
@@ -98,6 +98,7 @@ export class ProcessPolicyResolutionHandler implements IEventHandler<PolicyDecis
             orderType,
             side,
             size,
+            remainingSize: size,
             requestedPrice,
             stopLoss,
             takeProfit,

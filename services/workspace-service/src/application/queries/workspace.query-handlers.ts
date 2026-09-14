@@ -1,6 +1,6 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { GetWorkspaceQuery, ListWorkspacesQuery, ListWorkspaceMembersQuery, GetWorkspaceMemberQuery } from './workspace.queries';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { GetWorkspaceQuery, ListWorkspacesQuery, ListWorkspaceMembersQuery, GetWorkspaceMemberQuery, GetWorkspaceAuditLogsQuery } from './workspace.queries';
+import { PrismaService } from '@veerox/database';
 import { NotFoundException } from '@nestjs/common';
 
 @QueryHandler(GetWorkspaceQuery)
@@ -129,3 +129,48 @@ export class GetWorkspaceMemberHandler implements IQueryHandler<GetWorkspaceMemb
     return member;
   }
 }
+
+@QueryHandler(GetWorkspaceAuditLogsQuery)
+export class GetWorkspaceAuditLogsHandler implements IQueryHandler<GetWorkspaceAuditLogsQuery> {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async execute(query: GetWorkspaceAuditLogsQuery): Promise<unknown> {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: query.workspaceId }
+    });
+
+    if (!workspace || workspace.organizationId !== query.organizationId) {
+      throw new NotFoundException('Workspace not found in this organization');
+    }
+
+    const where: any = {
+      workspaceId: query.workspaceId,
+      organizationId: query.organizationId,
+    };
+
+    if (query.filters?.action) {
+      where.action = query.filters.action;
+    }
+    if (query.filters?.actorId) {
+      where.actorId = query.filters.actorId;
+    }
+    if (query.filters?.targetEntityId) {
+      where.targetEntityId = query.filters.targetEntityId;
+    }
+    if (query.filters?.startDate || query.filters?.endDate) {
+      where.timestamp = {};
+      if (query.filters?.startDate) where.timestamp.gte = new Date(query.filters.startDate);
+      if (query.filters?.endDate) where.timestamp.lte = new Date(query.filters.endDate);
+    }
+
+    const logs = await this.prisma.auditLog.findMany({
+      where,
+      orderBy: { timestamp: 'desc' },
+      take: query.filters?.limit || 50,
+      skip: query.filters?.offset || 0,
+    });
+
+    return logs;
+  }
+}
+

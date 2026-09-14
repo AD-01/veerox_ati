@@ -8,7 +8,7 @@ import {
   UserLockedEvent,
   UserUnlockedEvent,
   UserDeletedEvent
-} from '@veerox/events/src/identity.events';
+} from '@veerox/events';
 
 describe('User Aggregate', () => {
   it('should create a new user and publish UserRegisteredEvent', async () => {

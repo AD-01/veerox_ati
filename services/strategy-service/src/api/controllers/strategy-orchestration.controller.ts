@@ -3,7 +3,7 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { Request } from 'express';
 import { IsUUID, IsOptional } from 'class-validator';
 import { JwtAuthGuard } from '../../infrastructure/auth/jwt-auth.guard';
-import { WorkspaceScopeGuard } from '../../infrastructure/auth/workspace-scope.guard';
+import { WorkspaceScopeGuard } from '@veerox/shared';
 import { AssignStrategyCommand } from '../../application/commands/strategy-orchestration.commands';
 import { EvaluateStrategyCommand } from '../../application/commands/evaluate-strategy.command';
 import { MarketIntelligenceSnapshot } from '../../domain/aggregates/strategy-orchestration.aggregate';

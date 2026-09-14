@@ -1,5 +1,5 @@
 import { AggregateRoot } from '@nestjs/cqrs';
-import { Decimal } from '@prisma/client/runtime/library';
+import Decimal from 'decimal.js';
 import {
   AIRecommendationGeneratedEvent,
   AIRecommendationRejectedEvent,
@@ -91,6 +91,57 @@ export class AIRecommendation extends AggregateRoot {
   }
 
   public static create(props: AIRecommendationProps): AIRecommendation {
+    // 1. Validate confidence bounds
+    if (props.confidence.toNumber() < 0 || props.confidence.toNumber() > 1) {
+      throw new AppException('INVALID_DATA', 'Confidence must be between 0 and 1');
+    }
+
+    // 2. Validate side
+    if (props.suggestedSide !== null && props.suggestedSide !== 'BUY' && props.suggestedSide !== 'SELL') {
+      throw new AppException('INVALID_DATA', 'suggestedSide must be strictly BUY or SELL');
+    }
+
+    // 3. Validate size
+    if (props.suggestedSize !== null && props.suggestedSize.toNumber() <= 0) {
+      throw new AppException('INVALID_DATA', 'suggestedSize must be strictly greater than 0');
+    }
+
+    // 4. Validate SL/TP are positive and finite
+    if (props.suggestedStopLoss !== null) {
+      if (props.suggestedStopLoss.toNumber() <= 0 || !props.suggestedStopLoss.isFinite()) {
+        throw new AppException('INVALID_DATA', 'suggestedStopLoss must be positive and finite');
+      }
+    }
+
+    if (props.suggestedTakeProfit !== null) {
+      if (props.suggestedTakeProfit.toNumber() <= 0 || !props.suggestedTakeProfit.isFinite()) {
+        throw new AppException('INVALID_DATA', 'suggestedTakeProfit must be positive and finite');
+      }
+    }
+
+    // 5. Validate Logical relationships if Entry is provided
+    if (props.suggestedEntry !== null && props.suggestedSide !== null) {
+      const entry = props.suggestedEntry.toNumber();
+      const sl = props.suggestedStopLoss ? props.suggestedStopLoss.toNumber() : null;
+      const tp = props.suggestedTakeProfit ? props.suggestedTakeProfit.toNumber() : null;
+
+      if (props.suggestedSide === 'BUY') {
+        if (sl !== null && entry <= sl) {
+          throw new AppException('INVALID_DATA', 'For a BUY recommendation, Entry must be greater than Stop Loss');
+        }
+        if (tp !== null && entry >= tp) {
+          throw new AppException('INVALID_DATA', 'For a BUY recommendation, Entry must be less than Take Profit');
+        }
+      } else if (props.suggestedSide === 'SELL') {
+        if (sl !== null && entry >= sl) {
+          throw new AppException('INVALID_DATA', 'For a SELL recommendation, Entry must be less than Stop Loss');
+        }
+        if (tp !== null && entry <= tp) {
+          throw new AppException('INVALID_DATA', 'For a SELL recommendation, Entry must be greater than Take Profit');
+        }
+      }
+    }
+
     const recommendation = new AIRecommendation(props);
     
     // Publish generated event
@@ -127,13 +178,13 @@ export class AIRecommendation extends AggregateRoot {
 
   public requestExecution(): void {
     if (this.props.status !== AIRecommendationStatus.GENERATED) {
-      throw new AppException(`Cannot request execution from status ${this.props.status}`);
+      throw new AppException('INVALID_STATE', `Cannot request execution from status ${this.props.status}`);
     }
     if (this.props.executionMode === AIExecutionMode.SIGNAL_ONLY) {
-      throw new AppException('Execution not allowed for SIGNAL_ONLY recommendations');
+      throw new AppException('INVALID_MODE', 'Execution not allowed for SIGNAL_ONLY recommendations');
     }
     if (!this.props.suggestedSide || !this.props.suggestedSize) {
-      throw new AppException('Execution request requires side and size');
+      throw new AppException('MISSING_DATA', 'Execution request requires side and size');
     }
 
     this.props.status = AIRecommendationStatus.EXECUTION_REQUESTED;
@@ -155,7 +206,7 @@ export class AIRecommendation extends AggregateRoot {
 
   public complete(): void {
     if (this.props.status !== AIRecommendationStatus.EXECUTION_REQUESTED) {
-      throw new AppException(`Cannot complete recommendation from status ${this.props.status}`);
+      throw new AppException('INVALID_STATE', `Cannot complete recommendation from status ${this.props.status}`);
     }
 
     this.props.status = AIRecommendationStatus.COMPLETED;
@@ -173,7 +224,7 @@ export class AIRecommendation extends AggregateRoot {
 
   public reject(reason: string): void {
     if (this.props.status !== AIRecommendationStatus.GENERATED) {
-      throw new AppException(`Cannot reject recommendation from status ${this.props.status}`);
+      throw new AppException('INVALID_STATE', `Cannot reject recommendation from status ${this.props.status}`);
     }
 
     this.props.status = AIRecommendationStatus.REJECTED;
@@ -198,7 +249,7 @@ export class AIRecommendation extends AggregateRoot {
       AIRecommendationStatus.EXECUTION_REQUESTED
     ];
     if (!validFailStates.includes(this.props.status as AIRecommendationStatus)) {
-      throw new AppException(`Cannot fail recommendation from terminal status ${this.props.status}`);
+      throw new AppException('INVALID_STATE', `Cannot fail recommendation from terminal status ${this.props.status}`);
     }
 
     this.props.status = AIRecommendationStatus.FAILED;

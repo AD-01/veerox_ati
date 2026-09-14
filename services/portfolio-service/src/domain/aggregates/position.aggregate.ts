@@ -23,6 +23,8 @@ export class PositionAggregate extends AggregateRoot {
     public closedAt: Date | null,
     public correlationId: string | null,
     public version: number,
+    public brokerTicketId: string | null = null,
+    public magicNumber: string | null = null,
   ) {
     super();
   }
@@ -37,6 +39,8 @@ export class PositionAggregate extends AggregateRoot {
     quantity: Decimal,
     averageEntryPrice: Decimal,
     correlationId: string | null,
+    brokerTicketId: string | null = null,
+    magicNumber: string | null = null,
   ): PositionAggregate {
     const position = new PositionAggregate(
       id,
@@ -54,6 +58,8 @@ export class PositionAggregate extends AggregateRoot {
       null,
       correlationId,
       1,
+      brokerTicketId,
+      magicNumber,
     );
 
     position.apply(
@@ -68,6 +74,8 @@ export class PositionAggregate extends AggregateRoot {
         position.averageEntryPrice.toNumber(),
         position.correlationId,
         position.openedAt,
+        position.brokerTicketId,
+        position.magicNumber,
       ),
     );
 
@@ -97,6 +105,8 @@ export class PositionAggregate extends AggregateRoot {
         this.realizedPnl.toNumber(),
         this.correlationId,
         new Date(),
+        this.brokerTicketId,
+        this.magicNumber,
       )
     );
   }
@@ -126,6 +136,8 @@ export class PositionAggregate extends AggregateRoot {
           this.realizedPnl.toNumber(),
           this.correlationId,
           this.closedAt,
+          this.brokerTicketId,
+          this.magicNumber,
         )
       );
     } else {
@@ -142,6 +154,8 @@ export class PositionAggregate extends AggregateRoot {
           this.realizedPnl.toNumber(),
           this.correlationId,
           new Date(),
+          this.brokerTicketId,
+          this.magicNumber,
         )
       );
     }

@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+﻿import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ConfigModule } from '@nestjs/config';
+import { ObservabilityModule, RequestContextMiddleware } from '@veerox/shared';
 
 import { CreateWorkspaceHandler } from './application/handlers/create-workspace.handler';
 import { ArchiveWorkspaceHandler } from './application/handlers/archive-workspace.handler';
@@ -93,6 +94,7 @@ import { ConnectorConnectivityController } from './api/controllers/connector-con
 
 @Module({
   imports: [
+    ObservabilityModule,
     CqrsModule,
     ConfigModule,
   ],
@@ -107,4 +109,9 @@ import { ConnectorConnectivityController } from './api/controllers/connector-con
     RedisService,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestContextMiddleware).forRoutes('*');
+  }
+}
+

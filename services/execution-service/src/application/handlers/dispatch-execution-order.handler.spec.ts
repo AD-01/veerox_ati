@@ -16,6 +16,7 @@ describe('DispatchExecutionOrderHandler', () => {
     prisma = {
       tradingAccount: {
         findUnique: jest.fn(),
+        update: jest.fn().mockResolvedValue({ nextCommandSequence: 2 }), // Fixed for Track N
       },
       symbol: {
         findUnique: jest.fn(),
@@ -64,6 +65,7 @@ describe('DispatchExecutionOrderHandler', () => {
       connectorId: 'conn-1',
       organizationId: 'org-1',
       workspaceId: 'ws-1',
+      executionHalted: false,
     });
 
     prisma.symbol.findUnique.mockResolvedValue({
@@ -76,11 +78,35 @@ describe('DispatchExecutionOrderHandler', () => {
     expect(prisma.connectorCommand.create).toHaveBeenCalled();
     const createCall = prisma.connectorCommand.create.mock.calls[0][0];
     expect(createCall.data.connectorId).toBe('conn-1');
-    expect(createCall.data.commandType).toBe('TRADE_EXECUTE');
+    expect(createCall.data.commandType).toBe('TRADE_EXECUTE'); 
     
     expect(prisma.executionOrder.updateMany).toHaveBeenCalled();
     const updateCall = prisma.executionOrder.updateMany.mock.calls[0][0];
     expect(updateCall.data.status).toBe('DISPATCHED');
     expect(updateCall.where.status).toBe('PENDING');
+  });
+
+  it('Track H: should block financial execution if Kill Switch is active and emit AuditLog', async () => {
+    const event = new ExecutionOrderCreatedEvent(
+      'ord-ks', 'ws-1', 'org-1', 'acc-1', 'sym-1', 'dec-1', 'cor-ks', 'MARKET', 'BUY', 1.0, null, null, null, new Date()
+    );
+
+    prisma.tradingAccount.findUnique.mockResolvedValue({
+      id: 'acc-1',
+      connectorId: 'conn-1',
+      organizationId: 'org-1',
+      workspaceId: 'ws-1',
+      executionHalted: true, // Kill Switch Active
+    });
+
+    await expect(handler.handle(event)).rejects.toThrow(/Execution halted/);
+
+    // Should create an audit log
+    expect(prisma.auditLog.create).toHaveBeenCalled();
+    const auditCall = prisma.auditLog.create.mock.calls[0][0];
+    expect(auditCall.data.action).toBe('KILL_SWITCH_REJECTION');
+    
+    // Should NOT create connector command
+    expect(prisma.connectorCommand.create).not.toHaveBeenCalled();
   });
 });

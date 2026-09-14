@@ -5,7 +5,7 @@ import {
   TradingAccountArchivedEvent,
   TradingAccountDeletedEvent,
   AccountStatisticsUpdatedEvent,
-} from '@veerox/events/src/trading-account.events';
+} from '@veerox/events';
 
 export enum TradingAccountStatus {
   PENDING = 'PENDING',

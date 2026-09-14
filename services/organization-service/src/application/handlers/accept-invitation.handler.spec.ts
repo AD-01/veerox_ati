@@ -4,7 +4,7 @@ import { AcceptInvitationCommand } from '../commands/accept-invitation.command';
 import { ORGANIZATION_REPOSITORY } from '../../domain/repositories/organization.repository.interface';
 import { INVITATION_REPOSITORY } from '../../domain/repositories/invitation.repository.interface';
 import { AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { EventBus } from '@nestjs/cqrs';
 import { ForbiddenException, ConflictException, NotFoundException } from '@nestjs/common';
 import { OrganizationStatus } from '../../domain/aggregates/organization.aggregate';

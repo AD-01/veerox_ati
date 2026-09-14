@@ -8,14 +8,14 @@ import {
   RotateConnectorCredentialCommand,
   RevokeConnectorCredentialCommand,
 } from '../../commands/connector-credential.commands';
-import { PrismaService } from '@veerox/database/src/prisma.service';
-import { SecretGenerator } from '@veerox/shared/src/utils/secret-generator.util';
+import { PrismaService } from '@veerox/database';
+import { SecretGenerator } from '@veerox/shared';
 import { IAuditRepository, AUDIT_REPOSITORY } from '../../ports/audit.repository.interface';
 import {
   ConnectorCredentialProvisionedEvent,
   ConnectorCredentialRotatedEvent,
   ConnectorCredentialRevokedEvent,
-} from '@veerox/events/src/connector.events';
+} from '@veerox/events';
 
 async function hashSecret(secret: string): Promise<string> {
   return argon2.hash(secret, {

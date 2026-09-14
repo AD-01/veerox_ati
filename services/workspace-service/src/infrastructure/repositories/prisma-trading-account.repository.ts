@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ITradingAccountRepository } from '../../domain/repositories/trading-account.repository.interface';
 import { TradingAccount, TradingAccountStatus } from '../../domain/aggregates/trading-account.aggregate';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @Injectable()
 export class PrismaTradingAccountRepository implements ITradingAccountRepository {

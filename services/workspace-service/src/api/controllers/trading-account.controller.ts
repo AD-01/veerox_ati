@@ -15,11 +15,13 @@ import {
 } from '../../application/queries/trading-account.queries';
 
 import { JwtAuthGuard } from '../../infrastructure/auth/jwt-auth.guard';
-import { WorkspaceScopeGuard } from '../../infrastructure/auth/workspace-scope.guard';
-import {
-  WorkspaceManageAccess,
-  WorkspaceReadAccess,
-} from '../../infrastructure/auth/decorators';
+import { WorkspaceScopeGuard } from '@veerox/shared';
+import { 
+  OrganizationManageAccess, 
+  OrganizationReadAccess, 
+  WorkspaceManageAccess, 
+  WorkspaceReadAccess 
+} from '@veerox/shared';
 
 interface AuthenticatedUser {
   userId: string;

@@ -6,7 +6,7 @@ import { Email } from '../../domain/value-objects/email.value-object';
 import { PasswordHash } from '../../domain/value-objects/password-hash.value-object';
 import { Inject } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { AppException } from '@veerox/shared/src/errors/app.exception';
+import { AppException } from '@veerox/shared';
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
 
 @CommandHandler(RegisterUserCommand)

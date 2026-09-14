@@ -1,4 +1,4 @@
-import { Decimal } from '@prisma/client/runtime/library';
+import Decimal from 'decimal.js';
 import { AIRecommendation } from './ai-recommendation.aggregate';
 import { AIExecutionMode, AIRecommendationGeneratedEvent, AIRecommendationExecutionRequestedEvent, AIRecommendationStatus } from '@veerox/events';
 import { AppException } from '@veerox/shared';
@@ -84,5 +84,75 @@ describe('AIRecommendation', () => {
 
     expect(() => recommendation.requestExecution()).toThrow(AppException);
     expect(() => recommendation.requestExecution()).toThrow('Execution request requires side and size');
+  });
+
+  describe('Financial Safety Validations', () => {
+    it('should throw if confidence is < 0', () => {
+      expect(() => AIRecommendation.create({ ...defaultProps, confidence: new Decimal('-0.1') }))
+        .toThrow('Confidence must be between 0 and 1');
+    });
+
+    it('should throw if confidence is > 1', () => {
+      expect(() => AIRecommendation.create({ ...defaultProps, confidence: new Decimal('1.1') }))
+        .toThrow('Confidence must be between 0 and 1');
+    });
+
+    it('should throw if side is invalid', () => {
+      expect(() => AIRecommendation.create({ ...defaultProps, suggestedSide: 'INVALID' }))
+        .toThrow('suggestedSide must be strictly BUY or SELL');
+    });
+
+    it('should throw if size is 0', () => {
+      expect(() => AIRecommendation.create({ ...defaultProps, suggestedSize: new Decimal('0') }))
+        .toThrow('suggestedSize must be strictly greater than 0');
+    });
+
+    it('should throw if size is negative', () => {
+      expect(() => AIRecommendation.create({ ...defaultProps, suggestedSize: new Decimal('-5') }))
+        .toThrow('suggestedSize must be strictly greater than 0');
+    });
+
+    it('should throw if Stop Loss is negative', () => {
+      expect(() => AIRecommendation.create({ ...defaultProps, suggestedStopLoss: new Decimal('-10') }))
+        .toThrow('suggestedStopLoss must be positive and finite');
+    });
+
+    it('should throw if Take Profit is 0', () => {
+      expect(() => AIRecommendation.create({ ...defaultProps, suggestedTakeProfit: new Decimal('0') }))
+        .toThrow('suggestedTakeProfit must be positive and finite');
+    });
+
+    it('should throw on invalid BUY SL/TP relationship', () => {
+      expect(() => AIRecommendation.create({
+        ...defaultProps,
+        suggestedSide: 'BUY',
+        suggestedEntry: new Decimal('100'),
+        suggestedStopLoss: new Decimal('105'), // SL > Entry on BUY
+      })).toThrow('For a BUY recommendation, Entry must be greater than Stop Loss');
+
+      expect(() => AIRecommendation.create({
+        ...defaultProps,
+        suggestedSide: 'BUY',
+        suggestedEntry: new Decimal('100'),
+        suggestedTakeProfit: new Decimal('90'), // TP < Entry on BUY
+      })).toThrow('For a BUY recommendation, Entry must be less than Take Profit');
+    });
+
+    it('should throw on invalid SELL SL/TP relationship', () => {
+      expect(() => AIRecommendation.create({
+        ...defaultProps,
+        suggestedSide: 'SELL',
+        suggestedEntry: new Decimal('100'),
+        suggestedStopLoss: new Decimal('95'), // SL < Entry on SELL
+      })).toThrow('For a SELL recommendation, Entry must be less than Stop Loss');
+
+      expect(() => AIRecommendation.create({
+        ...defaultProps,
+        suggestedSide: 'SELL',
+        suggestedEntry: new Decimal('100'),
+        suggestedStopLoss: new Decimal('105'), // Valid SL for SELL
+        suggestedTakeProfit: new Decimal('110'), // TP > Entry on SELL
+      })).toThrow('For a SELL recommendation, Entry must be greater than Take Profit');
+    });
   });
 });

@@ -5,7 +5,7 @@ import { IWorkspaceRepository, WORKSPACE_REPOSITORY } from '../../domain/reposit
 import { IAuditRepository, AUDIT_REPOSITORY } from '../ports/audit.repository.interface';
 import { Workspace } from '../../domain/aggregates/workspace.aggregate';
 import { randomUUID } from 'crypto';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 @CommandHandler(CreateWorkspaceCommand)
 export class CreateWorkspaceHandler implements ICommandHandler<CreateWorkspaceCommand> {

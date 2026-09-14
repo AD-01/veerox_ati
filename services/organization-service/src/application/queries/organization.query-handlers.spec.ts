@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GetOrganizationHandler, ListOrganizationsHandler, GetMembersHandler, GetPendingInvitationsHandler } from './organization.query-handlers';
 import { GetOrganizationQuery, ListOrganizationsQuery, GetMembersQuery, GetPendingInvitationsQuery } from './organization.queries';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 import { ForbiddenException } from '@nestjs/common';
 
 describe('Organization Query Handlers (Security Tests)', () => {

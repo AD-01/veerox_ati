@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LogoutHandler } from './logout.handler';
 import { LogoutCommand } from '../commands/logout.command';
 import { TokenService } from '../../infrastructure/auth/token.service';
-import { PrismaService } from '@veerox/database/src/prisma.service';
+import { PrismaService } from '@veerox/database';
 
 describe('LogoutHandler', () => {
   let handler: LogoutHandler;

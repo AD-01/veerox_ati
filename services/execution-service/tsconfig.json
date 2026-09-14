@@ -1,1 +1,1 @@
-{ "extends": "@veerox/config/tsconfig.nest.json", "compilerOptions": { "baseUrl": "./" } }
+{ "extends": "@veerox/config/tsconfig.nest.json", "compilerOptions": { "baseUrl": "./", "outDir": "./dist" } }
